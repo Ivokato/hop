@@ -1,0 +1,25 @@
+extends layout
+
+block content
+  if info.title
+    h1= info.title
+  if info.introduction
+    p.heavy= info.introduction
+  if info.body
+    p= info.body
+  
+  if info.items.length
+    each item, itemname in info.items
+      article
+        if item.contents
+          - var parts = item.contents
+          if parts.title
+            h2= parts.title
+          if parts.introduction
+            p.heavy= parts.introduction
+          if parts.body
+            p= parts.body
+          if parts.footer
+            p= parts.footer
+  else
+    | jammer

@@ -1,0 +1,6 @@
+if header
+  if header.menu
+    ul
+      each menuItem in header.menu
+        li
+          a(href="/" + menuItem)= menuItem
