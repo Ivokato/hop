@@ -3,13 +3,17 @@
  * Module dependencies.
  */
 
-var express = require('express')
-  , routes = require('./routes')
-  , user = require('./routes/user')
-  , http = require('http')
-  , path = require('path'),
+var fs = require('fs'),
+    express = require('express'),
+		routes = require('./routes'),
+		user = require('./routes/user'),
+		http = require('http'),
+		path = require('path'),
     indexer = require('./indexer.js'),
-    config = require('./config.json');
+    config = require('./config.json')
+;
+
+if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
 
 var site = new indexer.Site(config.sitename, config.contentpath)
@@ -41,20 +45,31 @@ app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
 
 app.get('/:section', function(req, res){
-  console.log(req.params.section);
-  console.log(site);
-  if(site.sections && site.sections[req.params.section]){
-    res.render('defaultPage', { info: site.sections[req.params.section], header: site.header } );
-  }
+  if(req.params.section.split('.').length == 1){
+		if(site.sections && site.sections[req.params.section]){
+			res.render('defaultPage', { info: site.sections[req.params.section], header: site.header } );
+		}
+		else res.next();
+	}
+	else res.next();
 });
 
-app.get('/:section/:item', function(req, res){
-  console.log(req.params);
+app.get(/images\/(.+)/, function(req, res){
+	var imgPath = req.params[0],
+		  extension = imgPath.split('.').reverse()[0];
+	fs.readFile('content/' + imgPath, function(error, img){
+    res.writeHead(200, {'Content-Type': 'image/' + extension });
+    res.end(img, 'binary');
+	});
 });
 
-app.get('/:section/:item/:file', function(req, res){
-  
-});
+//app.get('/:section/:item', function(req, res){
+//  console.log(req.params);
+//});
+//
+//app.get('/:section/:item/:file', function(req, res){
+//  
+//});
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));

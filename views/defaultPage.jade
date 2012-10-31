@@ -1,25 +1,32 @@
 extends layout
 
 block content
-  if info.title
-    h1= info.title
-  if info.introduction
-    p.heavy= info.introduction
-  if info.body
-    p= info.body
-  
-  if info.items.length
-    each item, itemname in info.items
-      article
-        if item.contents
-          - var parts = item.contents
-          if parts.title
-            h2= parts.title
-          if parts.introduction
-            p.heavy= parts.introduction
-          if parts.body
-            p= parts.body
-          if parts.footer
-            p= parts.footer
-  else
-    | jammer
+  section
+    if info.title
+      h1= info.title
+    if info.introduction
+      p.heavy= info.introduction
+    if info.body
+      p= info.body
+    if info.images
+      each image, imagename in info.images
+        img(src=image.src, alt=image.alt, title=image.alt)
+    
+    if info.items.length
+      each item, itemname in info.items
+        article
+          if item.contents
+            - var parts = item.contents
+            if parts.title
+              h2= parts.title
+            if parts.introduction
+              p.heavy= parts.introduction
+            if parts.body
+              p= parts.body
+            if parts.footer
+              p= parts.footer
+            if parts.images
+              each image, imagename in parts.images
+                img(src=image.src, alt=image.alt, title=image.alt)
+    else
+      | jammer
