@@ -8,13 +8,16 @@ var express = require('express')
   , user = require('./routes/user')
   , http = require('http')
   , path = require('path'),
-    indexer = require('./indexer.js');
+    indexer = require('./indexer.js'),
+    config = require('./config.json');
 
+
+var site = new indexer.Site(config.sitename, config.contentpath)
 
 var app = express();
 
 app.configure(function(){
-  app.set('port', process.env.PORT || 3000);
+  app.set('port', process.env.PORT || config.port || 3000);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
   app.use(express.favicon());
@@ -32,17 +35,26 @@ app.configure('development', function(){
   app.use(express.errorHandler());
 });
 
-app.get('/', routes.index);
+
+
+app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
 
 app.get('/:section', function(req, res){
-  indexer.createStructure({}, function(error, site){
-    if(!error && site.sections && site.sections[req.params.section]){
-      res.render('defaultPage', { info: site.sections[req.params.section], header: site.header } );
-    }
-  });
+  console.log(req.params.section);
+  console.log(site);
+  if(site.sections && site.sections[req.params.section]){
+    res.render('defaultPage', { info: site.sections[req.params.section], header: site.header } );
+  }
 });
 
+app.get('/:section/:item', function(req, res){
+  console.log(req.params);
+});
+
+app.get('/:section/:item/:file', function(req, res){
+  
+});
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
