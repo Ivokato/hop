@@ -9,6 +9,7 @@
     "express": "3.0.0rc4",
     "jade": "*",
     "less-middleware": "*",
-		"foldermap": "*"
+		"foldermap": "*",
+		"watchr": "*"
   }
 }

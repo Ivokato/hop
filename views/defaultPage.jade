@@ -12,7 +12,7 @@ block content
       each image, imagename in info.images
         img(src=image.src, alt=image.alt, title=image.alt)
     
-    if info.items.length
+    if info.items
       each item, itemname in info.items
         article
           if item.contents
