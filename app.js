@@ -10,7 +10,8 @@ var fs = require('fs'),
 		http = require('http'),
 		path = require('path'),
     indexer = require('./indexer.js'),
-    config = require('./config.json')
+    config = require('./config.json'),
+		sio = require('socket.io')
 ;
 
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
@@ -71,6 +72,20 @@ app.get(/images\/(.+)/, function(req, res){
 //  
 //});
 
-http.createServer(app).listen(app.get('port'), function(){
+var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
+});
+
+var io = sio.listen(server);
+
+
+io.sockets.on('connection', function(socket){
+	console.log('connection open');
+	socket.emit('news', {hello: 'world'});
+	socket.on('otherEvent', function(data){
+		console.log(data);
+	});
+	socket.on('disconnect', function(){
+		console.log('connection closed' );
+	});
 });
