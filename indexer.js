@@ -189,6 +189,7 @@ function Section(name, site, data){
 					}
 				}
 				else if(item._ext == 'js'){
+        this.javascripts.removeOne({name: item._base});
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
@@ -294,6 +295,7 @@ function Item(name, section, data){
 					}
 				}
 				else if(part._ext == 'js'){
+    this.javascripts.removeOne({name: part._base});
 					this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
 				}
 			}
