@@ -1,7 +1,8 @@
-
 /**
  * Module dependencies.
  */
+
+require('./enrich.js');
 
 var fs = require('fs'),
     express = require('express'),
@@ -17,7 +18,7 @@ var fs = require('fs'),
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
 
-var site = new indexer.Site(config.sitename, config.contentpath)
+var site = new indexer.Site(config.sitename, config.contentpath);
 
 var app = express();
 
@@ -40,20 +41,8 @@ app.configure('development', function(){
   app.use(express.errorHandler());
 });
 
-
-
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
-
-app.get('/:section', function(req, res){
-  if(req.params.section.split('.').length == 1){
-		if(site.sections && site.sections[req.params.section]){
-			res.render('defaultPage', { info: site.sections[req.params.section], header: site.header } );
-		}
-		else res.next();
-	}
-	else res.next();
-});
 
 app.get(/images\/(.+)/, function(req, res){
 	var imgPath = req.params[0],
@@ -64,13 +53,47 @@ app.get(/images\/(.+)/, function(req, res){
 	});
 });
 
-//app.get('/:section/:item', function(req, res){
-//  console.log(req.params);
-//});
-//
-//app.get('/:section/:item/:file', function(req, res){
-//  
-//});
+app.get(/javascripts\/(.+)/, function(req, res){
+	var jsPath = req.params[0];
+	fs.readFile('content/' + jsPath, function(error, js){
+    res.writeHead(200, {'Content-Type': 'text/javascript'});
+    res.end(js, 'text');
+	});
+});
+
+
+app.get(/stylesheets\/(.+)/, function(req, res){
+	var cssPath = req.params[0],
+		  extension = cssPath.split('.').reverse()[0];
+	fs.readFile('content/' + cssPath, function(error, css){
+    res.writeHead(200, {'Content-Type': 'text/css'});
+    res.end(css, 'text');
+	});
+});
+
+app.get('/:section/:item', function(req, res){
+	if(req.params.section && req.params.item){
+		req.next();
+	}
+	else req.next();
+});
+
+
+app.get('/:section', function(req, res){
+	if(req.params.section.split('.').length == 1){
+		var section = site.sections.findOne({foldername: req.params.section});
+				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets),
+				javascripts = site.javascripts.deepclone().merge(section.javascripts);
+		for(var index in section.items){
+			var item = section.items[index];
+			stylesheets = stylesheets.merge(item.stylesheets);
+			javascripts = javascripts.merge(item.javascripts);
+		}
+		console.log("styles 'n scripts: ", stylesheets, javascripts);
+		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
+	}
+	else req.next();
+});
 
 var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
