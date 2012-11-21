@@ -12,7 +12,8 @@ var fs = require('fs'),
 		path = require('path'),
     indexer = require('./indexer.js'),
     config = require('./config.json'),
-		sio = require('socket.io')
+		sio = require('socket.io'),
+		gzippo = require('gzippo')
 ;
 
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
@@ -34,7 +35,10 @@ app.configure(function(){
   app.use(express.session());
   app.use(app.router);
   app.use(require('less-middleware')({ src: __dirname + '/public' }));
-  app.use(express.static(path.join(__dirname, 'public')));
+  //app.use(express.static(path.join(__dirname, 'public')));
+	app.use(gzippo.staticGzip(path.join(__dirname, 'public'), {
+		contentTypeMatch: /text|javascript|json|svg|ttf|otf/
+	}));
 });
 
 app.configure('development', function(){
@@ -89,7 +93,7 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log("styles 'n scripts: ", stylesheets, javascripts);
+		console.log(stylesheets);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
@@ -99,16 +103,16 @@ var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });
 
-var io = sio.listen(server);
-
-
-io.sockets.on('connection', function(socket){
-	console.log('connection open');
-	socket.emit('news', {hello: 'world'});
-	socket.on('otherEvent', function(data){
-		console.log(data);
-	});
-	socket.on('disconnect', function(){
-		console.log('connection closed' );
-	});
-});
+//var io = sio.listen(server);
+//
+//
+//io.sockets.on('connection', function(socket){
+//	console.log('connection open');
+//	socket.emit('news', {hello: 'world'});
+//	socket.on('otherEvent', function(data){
+//		console.log(data);
+//	});
+//	socket.on('disconnect', function(){
+//		console.log('connection closed' );
+//	});
+//});

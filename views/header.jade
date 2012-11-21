@@ -4,7 +4,5 @@ if header
       #logo
     if header.menu
       nav
-        ul
-          each menuItem in header.menu
-            li
-              a(href="/" + menuItem)= menuItem
+        each menuItem in header.menu
+          a(href="/" + menuItem)= menuItem

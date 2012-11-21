@@ -1,6 +1,6 @@
 {
   "sitename": "Untitled",
-  "port": 3000,
+  "port": 1000,
   "homesection": "Nieuws",
   "contentpath": "content/"
 }

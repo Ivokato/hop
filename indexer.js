@@ -68,16 +68,17 @@ function Site(name, path){
         if(file._ext in imageTypes){
 					if(file._base.toLowerCase() == 'logo') {
 						this.header.logo = stripPath(this.path, file._path);
-						fs.writeFileSync('public/css/logo.less', '#logo{background-image: url(/images/' + this.header.logo + ');}');
-						if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
+            if(fs.existsSync('content/logo.css')) fs.unlinkSync('content/logo.css');
+						fs.writeFileSync('content/logo.less', '#logo{background-image: url(/images/' + this.header.logo + ');}');
 					}
 					if(file._base.toLowerCase() == 'background') {
 						this.background = stripPath(this.path, file._path);
-						fs.writeFileSync('public/css/background.less', 'body{background-image: url(/images/' + this.background + ');}')
-						if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
+            if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
+						fs.writeFileSync('content/background.less', 'body{background-image: url(/images/' + this.background + ');}')
 					}
 				}
 				else if(file._ext == 'less' || file._ext == 'css'){
+          console.log(file._base);
 					this.stylesheets.removeOne({name: file._base});
 					this.stylesheets.push({src: '/stylesheets/' + file._base + '.css', name: file._base, date: file.date });
 					if(file._ext == 'less'){
@@ -132,10 +133,21 @@ function Site(name, path){
 			var split = name.split('.'),
 					filename = split[0],
 					extension = split[1];
-			if(extension == 'txt') delete this.contents[filename];
-			else if(extension in imageTypes) delete this.contents.images[filename];
-			else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
-			else if(extension == 'js') this.javascripts.removeOne({name: filename});
+      if(filename !== 'background' && filename !== 'logo'){
+        if(extension == 'txt') delete this.contents[filename];
+        else if(extension in imageTypes) delete this.contents.images[filename];
+        else if(extension == 'css' || extension == 'less') {
+          this.stylesheets.removeOne({name: filename});
+          if(extension == 'less'){
+            if(fs.existsSync('content/' + filename + '.css')) fs.unlinkSync('content/' + filename + '.css');
+          }
+        }
+        else if(extension == 'js') this.javascripts.removeOne({name: filename});
+      }
+      else{
+        if(fs.existsSync('content/' + filename + '.less')) fs.unlinkSync('content/' + filename + '.less');
+        console.log('removed ' + filename);
+      }
 		}
 	};
 	this.update = function(pathArray, file){
@@ -178,7 +190,8 @@ function Section(name, site, data){
           this.images.push(new Image(item, this.site.path));
         }
 				else if(item._ext == 'less' || item._ext == 'css'){
-					this.stylesheets.push({src: '/stylesheets/' + this.name + '/' + item._base + '.css', date: item.date });
+          this.stylesheets.removeOne({name: item._base});
+					this.stylesheets.push({name: item._base, src: '/stylesheets/' + this.name + '/' + item._base + '.css', date: item.date });
 					if(item._ext == 'less'){
 						lessparser.parse(item._content, function(error, tree){
 							if(error) return console.log(error);
@@ -189,7 +202,6 @@ function Section(name, site, data){
 					}
 				}
 				else if(item._ext == 'js'){
-        this.javascripts.removeOne({name: item._base});
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
@@ -295,7 +307,6 @@ function Item(name, section, data){
 					}
 				}
 				else if(part._ext == 'js'){
-    this.javascripts.removeOne({name: part._base});
 					this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
 				}
 			}

@@ -12,6 +12,7 @@
     "less-middleware": "*",
 		"foldermap": "*",
 		"watchr": "*",
-		"socket.io": "*"
+		"socket.io": "*",
+		"gzippo": "*"
   }
 }
