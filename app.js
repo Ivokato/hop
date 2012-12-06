@@ -93,10 +93,15 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log(stylesheets);
+		console.log(item);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
+});
+
+app.post('/:section/:item/respond', function(req, res){
+  console.log('req.post: ', req.body);
+  res.redirect("/" + req.params.section);
 });
 
 var server = http.createServer(app).listen(app.get('port'), function(){

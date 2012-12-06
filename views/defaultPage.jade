@@ -23,10 +23,12 @@ block content
         img(src=image.src, alt=image.alt, title=image.alt)
     if info.footer
       p!= info.footer
-    
+    if(info.extraContent)
+      each extraItem, i in info.extraContent
+        div(id=extraItem.name)= extraItem.content
     if info.items
       each item, i in info.items
-        article
+        article(id=item.foldername)
           if item.contents
             - var parts = item.contents
             if parts.title
@@ -40,5 +42,19 @@ block content
             if parts.images
               each image, imagename in parts.images
                 img(src=image.src, alt=image.alt, title=image.alt)
+            if parts.extraContent
+              each extraItem, index in parts.extraContent
+                div(id=extraItem.name)!= extraItem.content
+            if parts.allowResponses
+              .responses
+                if parts.responses
+                  each response, i in parts.responses
+                    .response
+                      h6 by {response.author}
+                      p= response.text
+                form(method="post", action="/" + info.title + "/" + item.foldername + "/respond")
+                  input#responseAuthor(type="text")
+                  textarea#responseText
+                  input#sendResponse(type="submit", value="place comment")
     else
       | jammer

@@ -9,7 +9,15 @@ var foldermap = require("foldermap"),
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
 			'png': 'iamge/png'
-		};
+		},
+    basicTextNames = {
+      title: true,
+      subtitle: true,
+      introduction: true,
+      body: true,
+      footer: true
+    }
+;
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path, filePath).split('/');
@@ -54,6 +62,7 @@ function Site(name, path){
 	this.header = {};
 	this.stylesheets = [];
   this.javascripts = [];
+  this.extraContent = [];
 	
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
@@ -94,11 +103,15 @@ function Site(name, path){
 					this.javascripts.push({src: '/javascripts/' + file._base + '.js', name: file._base, date: file.date});
 				}
 				else if(file._ext == 'txt'){
-					if(file._base == 'order'){
+          if(file._base in basicTextNames) this[file._base] = file._content;
+					else if(file._base == 'order'){
 						if(file._content.split('date').length > 1){
-							
+              
 						}
 					}
+          else{
+            this.extraContent.push({name: file._base, content: file._content});
+          }
 				}
       }
     }
@@ -126,7 +139,6 @@ function Site(name, path){
 	}
 	this.remove = function(name){
 		if(name.split('.').length == 1) {
-      console.log('......folder.remove.......\n', name);
 			this.sections.removeOne({foldername: name});
 		}
 		else{
@@ -134,7 +146,15 @@ function Site(name, path){
 					filename = split[0],
 					extension = split[1];
       if(filename !== 'background' && filename !== 'logo'){
-        if(extension == 'txt') delete this.contents[filename];
+        if(extension == 'txt'){
+          if(filename in basicTextNames) delete this.contents[filename];
+          else if(filename == 'order'){
+            
+          }
+          else{
+            this.extraContent.removeOne({name: filename});
+          }
+        }
         else if(extension in imageTypes) delete this.contents.images[filename];
         else if(extension == 'css' || extension == 'less') {
           this.stylesheets.removeOne({name: filename});
@@ -146,7 +166,6 @@ function Site(name, path){
       }
       else{
         if(fs.existsSync('content/' + filename + '.less')) fs.unlinkSync('content/' + filename + '.less');
-        console.log('removed ' + filename);
       }
 		}
 	};
@@ -173,6 +192,7 @@ function Section(name, site, data){
 	this.order = {items: 'date', images: 'date', stylesheets: 'date', javascripts: 'date'};
   this.items = [];
   this.images = [];
+  this.extraContent = [];
 	this.stylesheets = [];
 	this.javascripts = [];
 	this.date = data.date;
@@ -206,10 +226,13 @@ function Section(name, site, data){
 				}
 				else if(item._ext == 'txt'){
 					if(item._base == 'body') this.body = item._content;
-					if(item._base == 'introduction') this.introduction = item._content;
-					if(item._base == 'title') this.title = item._content;
-					if(item._base == 'footer') this.footer = item._content;
-				}
+					else if(item._base == 'introduction') this.introduction = item._content;
+					else if(item._base == 'title') this.title = item._content;
+					else if(item._base == 'footer') this.footer = item._content;
+          else{
+            this.extraContent.push({name: item._base, content: item._content});
+          }
+        }
       }
     }
 		this.sort();
@@ -240,7 +263,8 @@ function Section(name, site, data){
 					extension = split[1];
       if(extension){
         if(extension == 'txt') {
-          delete this[filename];
+          if(this[filename]) delete this[filename];
+          else this.extraContent.removeOne({name: filename});
           if(filename == 'title') this.title = this.foldername;
         }
         else if(extension in imageTypes) delete this.images.removeOne({name: filename});
@@ -250,10 +274,6 @@ function Section(name, site, data){
         }
       }
       else{ //is a directory
-        console.log('-----------------------');
-        console.log('foldername: ', name);
-        console.log(this.items);
-        console.log('-----------------------');
         this.items.removeOne({foldername: name});
       }
 		}
@@ -277,11 +297,15 @@ function Item(name, section, data){
   Object.defineProperty(this, 'section', {value: section});
 	this.contents = {
 		title: name,
-    images: []
+    images: [],
+    extraContent: [],
+    allowResponses: false
   };
+  this.name = name;
 	this.foldername = name;
 	this.stylesheets = [];
 	this.javascripts = [];
+  this.extraContent = [];
 	this.date = data.date;
   if(data && countChildren(data)) this.addData(data);
 }
@@ -290,26 +314,37 @@ function Item(name, section, data){
 		var item = this;
     for(var thing in data){
       var part = data[thing];
-      if(part._ext == 'txt') this.contents[part._base] = part._content;
+      if(part._type == 'directory'){
+        if(part._base.toLowerCase() == 'responses'){
+          this.contents.allowResponses = true;
+          this.contents.responses = [];
+        }
+      }
       else{
-				if(part._ext in imageTypes){
-					this.contents.images.push(new Image(part, this.section.site.path));
-				}
-				else if(part._ext == 'less' || part._ext == 'css'){
-					this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
-					if(part._ext == 'less'){
-						lessparser.parse(part._content, function(error, tree){
-							if(error) return console.log(error);
-							var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
-							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
-							fs.writeFileSync(fullpath, tree.toCSS());
-						});
-					}
-				}
-				else if(part._ext == 'js'){
-					this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
-				}
-			}
+        if(part._ext == 'txt'){
+          addTextFile.call(this.contents, part);
+          //this.contents[part._base] = part._content;
+        }
+        else{
+          if(part._ext in imageTypes){
+            this.contents.images.push(new Image(part, this.section.site.path));
+          }
+          else if(part._ext == 'less' || part._ext == 'css'){
+            this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
+            if(part._ext == 'less'){
+              lessparser.parse(part._content, function(error, tree){
+                if(error) return console.log(error);
+                var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
+                if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
+                fs.writeFileSync(fullpath, tree.toCSS());
+              });
+            }
+          }
+          else if(part._ext == 'js'){
+            this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
+          }
+        }
+      }
     }
   };
 	this.remove = function(name){
@@ -319,8 +354,7 @@ function Item(name, section, data){
 				extension = split[1];
     if(extension){ //is a file
       if(extension == 'txt') {
-        delete this.contents[filename];
-        if(filename == 'title') this.title = this.foldername;
+        removeTextFile.call(this.contents, filename);
       }
       else if(extension in imageTypes) {
         this.contents.images.removeOne({name: filename});
@@ -353,6 +387,21 @@ function Image(fileRef, basepath){
 	this.alt = fileRef._base;
 	this.src = '/images/' + stripPath(basepath, fileRef._path);
 	this.date = fileRef.date;
+}
+
+function addTextFile(file){
+  if(file._base in basicTextNames) this[file._base] = file._content;
+  else{
+    this.extraContent.removeOne({name: file._base});
+    this.extraContent.push({name: file._base, content: file._content});
+  }
+  return this;
+}
+
+function removeTextFile(filename){
+  if(filename in basicTextNames) delete this[filename];
+  else this.extraContent.removeOne({name: filename});
+  if(filename == 'title') this.title = this.foldername;
 }
 
 function stripPath(base, full){
