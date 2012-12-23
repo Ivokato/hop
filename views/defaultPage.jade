@@ -25,7 +25,7 @@ block content
       p!= info.footer
     if(info.extraContent)
       each extraItem, i in info.extraContent
-        div(id=extraItem.name)= extraItem.content
+        #{extraItem.name}!= extraItem.content
     if info.items
       each item, i in info.items
         article(id=item.foldername)
@@ -44,7 +44,9 @@ block content
                 img(src=image.src, alt=image.alt, title=image.alt)
             if parts.extraContent
               each extraItem, index in parts.extraContent
-                div(id=extraItem.name)!= extraItem.content
+                .test tralala
+                span= index +'lalala'
+                #{extraItem.name}!= extraItem.content
             if parts.allowResponses
               .responses
                 if parts.responses
@@ -56,5 +58,15 @@ block content
                   input#responseAuthor(type="text")
                   textarea#responseText
                   input#sendResponse(type="submit", value="place comment")
-    else
-      | jammer
+    if info.form
+      if info.form.fields
+        form(id=info.form.name, method="POST", action="/formSubmit/"+ info.form.name)
+          h3!= info.form.title
+          each field, index in info.form.fields
+            label(for=index)= index
+            if field == "text" || field == "password" || field == "email"
+              input(type=field, name=index)
+            else if field == "textarea"
+              textarea(name=index)
+            br
+          button(type="submit")= info.form.submitText

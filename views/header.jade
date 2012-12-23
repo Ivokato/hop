@@ -2,6 +2,10 @@ if header
   header
     if header.logo
       #logo
+    if header.title
+      h1= header.title
+    if header.subtitle
+      span.subtitle= header.subtitle
     if header.menu
       nav
         each menuItem in header.menu

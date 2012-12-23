@@ -16,6 +16,9 @@ var foldermap = require("foldermap"),
       introduction: true,
       body: true,
       footer: true
+    },
+    reservedFolderNames = {
+      FormResponses: true
     }
 ;
 
@@ -51,7 +54,9 @@ function Site(name, path){
 	var site = this;
 	watch({path: path, listener: function(eventName, filePath, currentStat, previousStat){
 		console.log(eventName, filePath);
-		redefine(site, eventName, filePath);
+    if(filePath.indexOf('conflicted copy') !== -1){
+      redefine(site, eventName, filePath);
+    }
 	}});
 	
   this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
@@ -72,7 +77,9 @@ function Site(name, path){
   this.addData = function(diskdata){
     for(var name in diskdata){
       var file = diskdata[name];
-      if(file._type == 'directory') this.sections.push(new Section(name, this, file));
+      if(file._type == 'directory'){
+        if(!(file._base in reservedFolderNames)) this.sections.push(new Section(name, this, file));
+      }
       else{
         if(file._ext in imageTypes){
 					if(file._base.toLowerCase() == 'logo') {
@@ -103,7 +110,11 @@ function Site(name, path){
 					this.javascripts.push({src: '/javascripts/' + file._base + '.js', name: file._base, date: file.date});
 				}
 				else if(file._ext == 'txt'){
-          if(file._base in basicTextNames) this[file._base] = file._content;
+          if(file._base in basicTextNames) {
+						var content = file._content.split("\r\n").join('<br>');
+						if(file._base == 'title' || file._base == 'subtitle') this.header[file._base] = content;
+						else this[file._base] = content;
+					}
 					else if(file._base == 'order'){
 						if(file._content.split('date').length > 1){
               
@@ -171,6 +182,7 @@ function Site(name, path){
 	};
 	this.update = function(pathArray, file){
 		if(pathArray.length > 1){
+      if(pathArray[0] in reservedFolderNames) return;
 			var section = this.sections.findOne({foldername: pathArray.shift()});
 			//var section = this.sections[pathArray.shift()];
       if(section){
@@ -225,13 +237,16 @@ function Section(name, site, data){
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
-					if(item._base == 'body') this.body = item._content;
-					else if(item._base == 'introduction') this.introduction = item._content;
-					else if(item._base == 'title') this.title = item._content;
-					else if(item._base == 'footer') this.footer = item._content;
+					var content = item._content.split('\r\n').join('<br>');
+          if(item._base in imageTypes) this[item._base] = content;
           else{
-            this.extraContent.push({name: item._base, content: item._content});
+            this.extraContent.removeOne({name: item._base});
+            this.extraContent.push({name: item._base, content: content});
           }
+        }
+        else if(item._ext == 'json'){
+          var json = JSON.parse(item._content);
+          if(item._base == 'form') this.form = new Form(json);
         }
       }
     }
@@ -323,7 +338,6 @@ function Item(name, section, data){
       else{
         if(part._ext == 'txt'){
           addTextFile.call(this.contents, part);
-          //this.contents[part._base] = part._content;
         }
         else{
           if(part._ext in imageTypes){
@@ -390,10 +404,11 @@ function Image(fileRef, basepath){
 }
 
 function addTextFile(file){
-  if(file._base in basicTextNames) this[file._base] = file._content;
+	var content = file._content.split('\r\n').join('<br>');
+  if(file._base in basicTextNames) this[file._base] = content;
   else{
     this.extraContent.removeOne({name: file._base});
-    this.extraContent.push({name: file._base, content: file._content});
+    this.extraContent.push({name: file._base, content: content});
   }
   return this;
 }
@@ -406,6 +421,13 @@ function removeTextFile(filename){
 
 function stripPath(base, full){
 	return full.split(base)[1];
+}
+
+function Form(json){
+  this.name = json.name;
+  this.title = json.title || this.name;
+  this.fields = json.fields;
+  this.submitText = json.submitText;
 }
 
 exports.Site = Site;

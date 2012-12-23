@@ -93,7 +93,7 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log(item);
+		
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
@@ -102,6 +102,42 @@ app.get('/:section', function(req, res){
 app.post('/:section/:item/respond', function(req, res){
   console.log('req.post: ', req.body);
   res.redirect("/" + req.params.section);
+});
+
+app.post('/formSubmit/:formName', function(req, res){
+  res.redirect('/' + config.homesection)
+  console.log(req.body);
+  fs.exists('content/FormResponses', function(exists){
+    
+    var saveResponse = function (){
+      
+      fs.exists('content/FormResponses/' + req.params.formName, function(exists){
+        
+        var saveResponse = function(){
+          var date = new Date(),
+              str = '',
+              isFirst = true,
+              firstKey = '';
+          for(var index in req.body){
+            str += index + ': ' + req.body[index] + '\r\n';
+            if(isFirst) firstKey = req.body[index];
+          }
+          fs.writeFile(
+            'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + ':' + date.getMinutes() + (firstKey.length ? ('-' + firstKey) : '') + '.txt',
+            str,
+            console.log
+          );
+        };
+        
+        if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
+        else saveResponse();
+      });
+      
+    };
+    
+    if(!exists) fs.mkdir('content/FormResponses', saveResponse)
+    else saveResponse();
+  })
 });
 
 var server = http.createServer(app).listen(app.get('port'), function(){
