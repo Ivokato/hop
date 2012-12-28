@@ -69,7 +69,7 @@ function Site(name, path){
 	this.stylesheets = [];
   this.javascripts = [];
   this.extraContent = [];
-	
+
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
   this.header.menu = createMenuFromStructure(this);
