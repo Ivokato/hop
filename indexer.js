@@ -54,10 +54,11 @@ function enrichDiskData(diskdata){
 function Site(name, path){
 	var site = this;
 	watch({path: path, listener: function(eventName, filePath, currentStat, previousStat){
-		console.log(eventName, filePath);
-    if(filePath.indexOf('conflicted copy') !== -1){
+    //if(filePath.indexOf('conflicted copy') !== -1){
+      console.log(eventName, filePath);
       redefine(site, eventName, filePath);
-    }
+    //}
+    //else console.log('aborting ' + eventName + ' for ' + filePath, filePath.indexOf('conflicted copy'));
 	}});
 	
   this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
@@ -79,6 +80,10 @@ function Site(name, path){
 		var noChildren = true;
     for(var name in diskdata){
       var file = diskdata[name];
+      if(file._base.indexOf('conflicted copy') !== -1){
+        console.log('file ignored: ' + file._base);
+        continue;
+      }
       if(file._type == 'directory'){
         if(!(file._base in reservedFolderNames)) this.sections.push(new Section(name, this, file));
       }
@@ -126,6 +131,9 @@ function Site(name, path){
             this.extraContent.push({name: file._base, content: file._content});
           }
 				}
+        else if(file._ext == 'ico'){
+          console.log('ico file encountered: ' + file._base);
+        }
       }
 			noChildren = false;
     }
@@ -190,12 +198,13 @@ function Site(name, path){
 	};
 	this.update = function(pathArray, file){
 		if(pathArray.length > 1){
-      if(pathArray[0] in reservedFolderNames) return;
+      if(pathArray[0] in reservedFolderNames) return console.log('folder ignored, in reservedFolderNames');
 			var section = this.sections.findOne({foldername: pathArray.shift()});
 			//var section = this.sections[pathArray.shift()];
       if(section){
          section.update(pathArray, file);
       }
+      else console.log('unknown section: ', pathArray);
 		}
 		else{
 			this.addData(file);
@@ -224,6 +233,10 @@ function Section(name, site, data){
 		var section = this;
     for(var itemname in data){
       var item = data[itemname];
+      if(item._base.indexOf('conflicted copy') !== -1){
+        console.log('file ignored: ' + item._base);
+        continue;
+      }
       if(item._type == 'directory') this.items.push(new Item(itemname, this, item));
       else{
         if(item._ext in imageTypes){
@@ -246,7 +259,7 @@ function Section(name, site, data){
 				}
 				else if(item._ext == 'txt'){
 					var content = item._content.split('\r\n').join('<br>');
-          if(item._base in imageTypes) this[item._base] = content;
+          if(item._base in basicTextNames) this[item._base] = content;
           else{
             this.extraContent.removeOne({name: item._base});
             this.extraContent.push({name: item._base, content: content});
@@ -337,6 +350,10 @@ function Item(name, section, data){
 		var item = this;
     for(var thing in data){
       var part = data[thing];
+      if(part._base.indexOf('conflicted copy') !== -1){
+        console.log('file ignored: ' + part._base);
+        continue;
+      }
       if(part._type == 'directory'){
         if(part._base.toLowerCase() == 'responses'){
           this.contents.allowResponses = true;
@@ -436,6 +453,7 @@ function Form(json){
   this.title = json.title || this.name;
   this.fields = json.fields;
   this.submitText = json.submitText;
+  this.completeText = json.completeText;
 }
 
 exports.Site = Site;

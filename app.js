@@ -27,7 +27,7 @@ app.configure(function(){
   app.set('port', process.env.PORT || config.port || 3000);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
-  app.use(express.favicon());
+  //app.use(express.favicon());
   app.use(express.logger('dev'));
   app.use(express.bodyParser());
   app.use(express.methodOverride());
@@ -93,7 +93,7 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		
+		console.log(section);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
@@ -123,7 +123,7 @@ app.post('/formSubmit/:formName', function(req, res){
             if(isFirst) firstKey = req.body[index];
           }
           fs.writeFile(
-            'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + ':' + date.getMinutes() + (firstKey.length ? ('-' + firstKey) : '') + '.txt',
+            'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
             str,
             console.log
           );

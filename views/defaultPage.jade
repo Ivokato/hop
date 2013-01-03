@@ -25,7 +25,7 @@ block content
       p!= info.footer
     if(info.extraContent)
       each extraItem, i in info.extraContent
-        #{extraItem.name}!= extraItem.content
+        div(id=extraItem.name)!= extraItem.content
     if info.items
       each item, i in info.items
         article(id=item.foldername)
@@ -60,7 +60,7 @@ block content
                   input#sendResponse(type="submit", value="place comment")
     if info.form
       if info.form.fields
-        form(id=info.form.name, method="POST", action="/formSubmit/"+ info.form.name)
+        form(id=info.form.name, method="POST", action="/formSubmit/"+ info.form.name, data-submitmessage=info.form.completeText)
           h3!= info.form.title
           each field, index in info.form.fields
             label(for=index)= index
