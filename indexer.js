@@ -5,6 +5,7 @@ var foldermap = require("foldermap"),
     fs = require("fs"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
+		config = require("./config.json"),
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -75,6 +76,7 @@ function Site(name, path){
 }
 (function(){
   this.addData = function(diskdata){
+		var noChildren = true;
     for(var name in diskdata){
       var file = diskdata[name];
       if(file._type == 'directory'){
@@ -125,9 +127,15 @@ function Site(name, path){
           }
 				}
       }
+			noChildren = false;
     }
 		if(!this.background) fs.writeFileSync('public/css/background.less', '');
 		if(!this.header.logo) fs.writeFileSync('public/css/logo.less', '');
+		if(noChildren) setTimeout(function(){
+			var path = config.contentpath + config.homesection;
+			console.log('creating ' + path);
+			fs.mkdirSync(path)
+		}, 500)
 		this.sort();
   };
 	this.sort = function(){
