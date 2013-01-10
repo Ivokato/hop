@@ -67,4 +67,5 @@ block content
             else if field == "textarea"
               textarea(name=index)
             br
+          input(type="hidden", value=generateToken(info.form.name), name="token")
           button(type="submit")= info.form.submitText
