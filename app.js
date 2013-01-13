@@ -6,15 +6,25 @@ require('./enrich.js');
 
 var fs = require('fs'),
     express = require('express'),
-		routes = require('./routes'),
-		user = require('./routes/user'),
-		http = require('http'),
-		path = require('path'),
+    routes = require('./routes'),
+    user = require('./routes/user'),
+    http = require('http'),
+    path = require('path'),
     indexer = require('./indexer.js'),
     config = require('./config.json'),
-		sio = require('socket.io'),
-		gzippo = require('gzippo')
+    sio = require('socket.io'),
+    gzippo = require('gzippo'),
+    sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail
 ;
+
+//function sendMail(options, callback){
+//  var str = "curl -s -k --user api:key-092ucndkyk7bg45f-o5h17nkbxuhozl9 https://api.mailgun.net/v2/w0ps.mailgun.org/messages -F from='" + options.from + "' -F to='" + options.to + "' -F subject='" + options.subject + "' -F text='" + options.text + "'";
+//  console.log(str);
+//  
+//  exec(str, callback);
+//}
+
+var formTokens = {};
 
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
@@ -31,7 +41,7 @@ app.configure(function(){
   app.use(express.logger('dev'));
   app.use(express.bodyParser());
   app.use(express.methodOverride());
-  app.use(express.cookieParser('your secret here'));
+  app.use(express.cookieParser(config.secret || 'your secret here'));
   app.use(express.session());
   app.use(app.router);
   app.use(require('less-middleware')({ src: __dirname + '/public' }));
@@ -45,7 +55,13 @@ app.configure('development', function(){
   app.use(express.errorHandler());
 });
 
-app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
+app.locals.generateToken = function(formName) {
+  var str = formName + Math.random();
+  formTokens[str] = new Date;
+  return str;
+};
+
+app.get('/', function(req, res){ res.redirect('/	' + config.homesection); });
 //app.get('/users', user.list);
 
 app.get(/images\/(.+)/, function(req, res){
@@ -106,37 +122,57 @@ app.post('/:section/:item/respond', function(req, res){
 app.post('/formSubmit/:formName', function(req, res){
   res.redirect('/' + config.homesection)
   console.log(req.body);
-  fs.exists('content/FormResponses', function(exists){
+  if(formTokens[req.body.token]){
+    delete formTokens[req.body.token];
+    delete req.body.token;
     
-    var saveResponse = function (){
+    fs.exists('content/FormResponses', function(exists){
       
-      fs.exists('content/FormResponses/' + req.params.formName, function(exists){
-        
-        var saveResponse = function(){
-          var date = new Date(),
-              str = '',
-              isFirst = true,
-              firstKey = '';
-          for(var index in req.body){
-            str += index + ': ' + req.body[index] + '\r\n';
-            if(isFirst) firstKey = req.body[index];
-          }
-          fs.writeFile(
-            'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
-            str,
-            console.log
-          );
-        };
-        
-        if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
-        else saveResponse();
-      });
+      var saveResponse = function (){
+	
+	fs.exists('content/FormResponses/' + req.params.formName, function(exists){
+	  
+	  var saveResponse = function(){
+	    var date = new Date(),
+		str = '',
+		isFirst = true,
+		firstKey = '';
+	    for(var index in req.body){
+	      str += index + ': ' + req.body[index] + '\r\n';
+	      if(isFirst) firstKey = req.body[index];
+	    }
+	    fs.writeFile(
+	      'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
+	      str
+	    );
+	    
+	    //send copy to submitter    
+	    sendMail({
+	      from: req.body.Email,
+	      to: config.email || 'ivo.de.kler@gmail.com',
+	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
+	      text: str
+	    }, console.log);
+	    
+	    //send copy to receiver    
+	    sendMail({
+	      from: config.email || 'ivo.de.kler@gmail.com',
+	      to: req.body.Email,
+	      subject: 'Your ' + req.params.formName + ' submission',
+	      text: str
+	    }, console.log);
+	  };
+	  
+	  if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
+	  else saveResponse();
+	});
+	
+      };
       
-    };
-    
-    if(!exists) fs.mkdir('content/FormResponses', saveResponse)
-    else saveResponse();
-  })
+      if(!exists) fs.mkdir('content/FormResponses', saveResponse)
+      else saveResponse();
+    });
+  }
 });
 
 var server = http.createServer(app).listen(app.get('port'), function(){

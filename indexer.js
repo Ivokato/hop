@@ -5,6 +5,7 @@ var foldermap = require("foldermap"),
     fs = require("fs"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
+		config = require("./config.json"),
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -19,8 +20,11 @@ var foldermap = require("foldermap"),
     },
     reservedFolderNames = {
       FormResponses: true
-    }
+    },
+		config = require('./config.json')
 ;
+
+console.log(config);
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path, filePath).split('/');
@@ -53,11 +57,8 @@ function enrichDiskData(diskdata){
 function Site(name, path){
 	var site = this;
 	watch({path: path, listener: function(eventName, filePath, currentStat, previousStat){
-    //if(filePath.indexOf('conflicted copy') !== -1){
-      console.log(eventName, filePath);
-      redefine(site, eventName, filePath);
-    //}
-    //else console.log('aborting ' + eventName + ' for ' + filePath, filePath.indexOf('conflicted copy'));
+    console.log(eventName, filePath);
+    redefine(site, eventName, filePath);
 	}});
 	
   this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
@@ -76,6 +77,7 @@ function Site(name, path){
 }
 (function(){
   this.addData = function(diskdata){
+		var noChildren = true;
     for(var name in diskdata){
       var file = diskdata[name];
       if(file._base.indexOf('conflicted copy') !== -1){
@@ -133,9 +135,15 @@ function Site(name, path){
           console.log('ico file encountered: ' + file._base);
         }
       }
+			noChildren = false;
     }
 		if(!this.background) fs.writeFileSync('public/css/background.less', '');
 		if(!this.header.logo) fs.writeFileSync('public/css/logo.less', '');
+		if(noChildren) setTimeout(function(){
+			var path = config.contentpath + config.homesection;
+			console.log('creating ' + path);
+			fs.mkdirSync(path)
+		}, 500)
 		this.sort();
   };
 	this.sort = function(){
@@ -232,7 +240,16 @@ function Section(name, site, data){
       if(item._type == 'directory') this.items.push(new Item(itemname, this, item));
       else{
         if(item._ext in imageTypes){
-          this.images.push(new Image(item, this.site.path));
+          if(item._base.toLowerCase() == 'background') {
+            //continue;
+            console.log(this.site.path + this.foldername + '/background.less');
+            //if(fs.existsSync('content/' + this.foldername + '/background.css')) fs.unlinkSync('content/' + this.foldername + 'style.css');
+						fs.writeFileSync(
+              this.site.path + this.foldername + '/background.less',
+              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:contain;}'
+            )
+					}
+          else this.images.push(new Image(item, this.site.path));
         }
 				else if(item._ext == 'less' || item._ext == 'css'){
           this.stylesheets.removeOne({name: item._base});
@@ -247,6 +264,7 @@ function Section(name, site, data){
 					}
 				}
 				else if(item._ext == 'js'){
+          this.javascripts.removeOne({name: item._base});
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
@@ -295,7 +313,10 @@ function Section(name, site, data){
           else this.extraContent.removeOne({name: filename});
           if(filename == 'title') this.title = this.foldername;
         }
-        else if(extension in imageTypes) delete this.images.removeOne({name: filename});
+        else if(extension in imageTypes){
+          if(filename == 'background') if(fs.existsSync(this.site.path + this.foldername + '/background.less')) fs.unlinkSync(this.site.path + this.foldername + 'background.less');
+          else delete this.images.removeOne({name: filename});
+        }
         else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
         else if(extension == 'js'){
           this.javascripts.removeOne({name: filename});
@@ -372,6 +393,7 @@ function Item(name, section, data){
             }
           }
           else if(part._ext == 'js'){
+            this.javascripts.removeOne({name: part._base});
             this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
           }
         }
