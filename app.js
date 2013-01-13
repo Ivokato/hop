@@ -93,7 +93,6 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log(section);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
