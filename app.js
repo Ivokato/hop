@@ -149,14 +149,12 @@ app.post('/formSubmit/:formName', function(req, res){
 	    //send copy to submitter    
 	    sendMail({
 	      from: req.body.Email,
-	      to: config.email || 'ivo.de.kler@gmail.com',
 	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
 	      text: str
 	    }, console.log);
 	    
 	    //send copy to receiver    
 	    sendMail({
-	      from: config.email || 'ivo.de.kler@gmail.com',
 	      to: req.body.Email,
 	      subject: 'Your ' + req.params.formName + ' submission',
 	      text: str
