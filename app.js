@@ -61,7 +61,7 @@ app.locals.generateToken = function(formName) {
   return str;
 };
 
-app.get('/', function(req, res){ res.redirect('/	' + config.homesection); });
+app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
 
 app.get(/images\/(.+)/, function(req, res){
