@@ -14,17 +14,19 @@ var fs = require('fs'),
     config = require('./config.json'),
     sio = require('socket.io'),
     gzippo = require('gzippo'),
+    scheduler = require('node-schedule'),
     sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail
 ;
 
-//function sendMail(options, callback){
-//  var str = "curl -s -k --user api:key-092ucndkyk7bg45f-o5h17nkbxuhozl9 https://api.mailgun.net/v2/w0ps.mailgun.org/messages -F from='" + options.from + "' -F to='" + options.to + "' -F subject='" + options.subject + "' -F text='" + options.text + "'";
-//  console.log(str);
-//  
-//  exec(str, callback);
-//}
-
-var formTokens = {};
+var formTokens = {},
+    tokenCleanJob = scheduler.scheduleJob('53 * * * *', function(){
+      var now = new Date().getTime();
+      console.log('hoi: ', now);
+      for(var i in formTokens){
+        console.log(formTokens[i].getTime(), now, now - formTokens[i].getTime(), 60 * 60 * 1000 );
+        if(now - formTokens[i].getTime() > 60 * 60 * 1000) delete formTokens[i];
+      }
+    }); 
 
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
@@ -58,6 +60,7 @@ app.configure('development', function(){
 app.locals.generateToken = function(formName) {
   var str = formName + Math.random();
   formTokens[str] = new Date;
+  console.log(formTokens);
   return str;
 };
 
