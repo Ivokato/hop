@@ -2,5 +2,9 @@
   "sitename": "Untitled",
   "port": 1000,
   "homesection": "Nieuws",
-  "contentpath": "content/"
+  "contentpath": "content/",
+	"mailgunSettings": {
+		"domain": "user.mailgun.org",
+		"key": "key-123456789",
+		"defaultAddress": "no@bo.dy"
 }

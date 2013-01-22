@@ -44,9 +44,7 @@ block content
                 img(src=image.src, alt=image.alt, title=image.alt)
             if parts.extraContent
               each extraItem, index in parts.extraContent
-                .test tralala
-                span= index +'lalala'
-                #{extraItem.name}!= extraItem.content
+                div(id=extraItem.name)!= extraItem.content
             if parts.allowResponses
               .responses
                 if parts.responses
@@ -69,4 +67,5 @@ block content
             else if field == "textarea"
               textarea(name=index)
             br
+          input(type="hidden", value=generateToken(info.form.name), name="token")
           button(type="submit")= info.form.submitText

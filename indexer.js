@@ -5,6 +5,7 @@ var foldermap = require("foldermap"),
     fs = require("fs"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
+		config = require("./config.json"),
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -76,6 +77,7 @@ function Site(name, path){
 }
 (function(){
   this.addData = function(diskdata){
+		var noChildren = true;
     for(var name in diskdata){
       var file = diskdata[name];
       if(file._base.indexOf('conflicted copy') !== -1){
@@ -132,9 +134,15 @@ function Site(name, path){
           console.log('ico file encountered: ' + file._base);
         }
       }
+			noChildren = false;
     }
 		if(!this.background) fs.writeFileSync('public/css/background.less', '');
 		if(!this.header.logo) fs.writeFileSync('public/css/logo.less', '');
+		if(noChildren) setTimeout(function(){
+			var path = config.contentpath + config.homesection;
+			console.log('creating ' + path);
+			fs.mkdirSync(path)
+		}, 500)
 		this.sort();
   };
 	this.sort = function(){
@@ -255,6 +263,7 @@ function Section(name, site, data){
 					}
 				}
 				else if(item._ext == 'js'){
+          this.javascripts.removeOne({name: item._base});
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
@@ -383,6 +392,7 @@ function Item(name, section, data){
             }
           }
           else if(part._ext == 'js'){
+            this.javascripts.removeOne({name: part._base});
             this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
           }
         }

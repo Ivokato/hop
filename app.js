@@ -6,15 +6,27 @@ require('./enrich.js');
 
 var fs = require('fs'),
     express = require('express'),
-		routes = require('./routes'),
-		user = require('./routes/user'),
-		http = require('http'),
-		path = require('path'),
+    routes = require('./routes'),
+    user = require('./routes/user'),
+    http = require('http'),
+    path = require('path'),
     indexer = require('./indexer.js'),
     config = require('./config.json'),
-		sio = require('socket.io'),
-		gzippo = require('gzippo')
+    sio = require('socket.io'),
+    gzippo = require('gzippo'),
+    scheduler = require('node-schedule'),
+    sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail
 ;
+
+var formTokens = {},
+    tokenCleanJob = scheduler.scheduleJob('53 * * * *', function(){
+      var now = new Date().getTime();
+      console.log('hoi: ', now);
+      for(var i in formTokens){
+        console.log(formTokens[i].getTime(), now, now - formTokens[i].getTime(), 60 * 60 * 1000 );
+        if(now - formTokens[i].getTime() > 60 * 60 * 1000) delete formTokens[i];
+      }
+    }); 
 
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
@@ -31,7 +43,7 @@ app.configure(function(){
   app.use(express.logger('dev'));
   app.use(express.bodyParser());
   app.use(express.methodOverride());
-  app.use(express.cookieParser('your secret here'));
+  app.use(express.cookieParser(config.secret || 'your secret here'));
   app.use(express.session());
   app.use(app.router);
   app.use(require('less-middleware')({ src: __dirname + '/public' }));
@@ -44,6 +56,13 @@ app.configure(function(){
 app.configure('development', function(){
   app.use(express.errorHandler());
 });
+
+app.locals.generateToken = function(formName) {
+  var str = formName + Math.random();
+  formTokens[str] = new Date;
+  console.log(formTokens);
+  return str;
+};
 
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
@@ -93,7 +112,6 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log(section);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
@@ -107,37 +125,55 @@ app.post('/:section/:item/respond', function(req, res){
 app.post('/formSubmit/:formName', function(req, res){
   res.redirect('/' + config.homesection)
   console.log(req.body);
-  fs.exists('content/FormResponses', function(exists){
+  if(formTokens[req.body.token]){
+    delete formTokens[req.body.token];
+    delete req.body.token;
     
-    var saveResponse = function (){
+    fs.exists('content/FormResponses', function(exists){
       
-      fs.exists('content/FormResponses/' + req.params.formName, function(exists){
-        
-        var saveResponse = function(){
-          var date = new Date(),
-              str = '',
-              isFirst = true,
-              firstKey = '';
-          for(var index in req.body){
-            str += index + ': ' + req.body[index] + '\r\n';
-            if(isFirst) firstKey = req.body[index];
-          }
-          fs.writeFile(
-            'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
-            str,
-            console.log
-          );
-        };
-        
-        if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
-        else saveResponse();
-      });
+      var saveResponse = function (){
+	
+	fs.exists('content/FormResponses/' + req.params.formName, function(exists){
+	  
+	  var saveResponse = function(){
+	    var date = new Date(),
+		str = '',
+		isFirst = true,
+		firstKey = '';
+	    for(var index in req.body){
+	      str += index + ': ' + req.body[index] + '\r\n';
+	      if(isFirst) firstKey = req.body[index];
+	    }
+	    fs.writeFile(
+	      'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
+	      str
+	    );
+	    
+	    //send copy to submitter    
+	    sendMail({
+	      from: req.body.Email,
+	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
+	      text: str
+	    }, console.log);
+	    
+	    //send copy to receiver    
+	    sendMail({
+	      to: req.body.Email,
+	      subject: 'Your ' + req.params.formName + ' submission',
+	      text: str
+	    }, console.log);
+	  };
+	  
+	  if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
+	  else saveResponse();
+	});
+	
+      };
       
-    };
-    
-    if(!exists) fs.mkdir('content/FormResponses', saveResponse)
-    else saveResponse();
-  })
+      if(!exists) fs.mkdir('content/FormResponses', saveResponse)
+      else saveResponse();
+    });
+  }
 });
 
 var server = http.createServer(app).listen(app.get('port'), function(){
