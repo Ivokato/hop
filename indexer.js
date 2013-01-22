@@ -88,18 +88,17 @@ function Site(name, path){
       else{
         if(file._ext in imageTypes){
 					if(file._base.toLowerCase() == 'logo') {
-						this.header.logo = stripPath(this.path, file._path);
-            if(fs.existsSync('content/logo.css')) fs.unlinkSync('content/logo.css');
-						fs.writeFileSync('content/logo.less', '#logo{background-image: url(/images/' + this.header.logo + ');}');
+						this.header.logo = '/images/' + stripPath(this.path, file._path);
+            console.log('logo: ', this.header.logo);
 					}
 					if(file._base.toLowerCase() == 'background') {
 						this.background = stripPath(this.path, file._path);
             if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
-						fs.writeFileSync('content/background.less', 'body{background-image: url(/images/' + this.background + ');}')
+						fs.writeFile('content/background.less', 'body{background-image: url(/images/' + this.background + ');}')
 					}
 				}
 				else if(file._ext == 'less' || file._ext == 'css'){
-          console.log(file._base);
+          console.log('stylesheet found: ' + file._base + ', type: ' + file._ext);
 					this.stylesheets.removeOne({name: file._base});
 					this.stylesheets.push({src: '/stylesheets/' + file._base + '.css', name: file._base, date: file.date });
 					if(file._ext == 'less'){

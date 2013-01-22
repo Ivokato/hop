@@ -1,7 +1,8 @@
 if header
   header
     if header.logo
-      #logo
+      a#logo(href="/")
+        img(src=header.logo)
     if header.title
       h1= header.title
     if header.subtitle
