@@ -64,7 +64,7 @@ app.locals.generateToken = function(formName) {
   return str;
 };
 
-app.get('/', function(req, res){ res.redirect('/	' + config.homesection); });
+app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 //app.get('/users', user.list);
 
 app.get(/images\/(.+)/, function(req, res){
@@ -112,7 +112,6 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		console.log(section);
 		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
@@ -153,14 +152,12 @@ app.post('/formSubmit/:formName', function(req, res){
 	    //send copy to submitter    
 	    sendMail({
 	      from: req.body.Email,
-	      to: config.email || 'ivo.de.kler@gmail.com',
 	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
 	      text: str
 	    }, console.log);
 	    
 	    //send copy to receiver    
 	    sendMail({
-	      from: config.email || 'ivo.de.kler@gmail.com',
 	      to: req.body.Email,
 	      subject: 'Your ' + req.params.formName + ' submission',
 	      text: str
