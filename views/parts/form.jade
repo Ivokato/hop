@@ -1,0 +1,11 @@
+form(id=info.form.name, method="POST", action="/formSubmit/"+ info.form.name, data-submitmessage=info.form.completeText)
+  h3!= info.form.title
+  each field, index in info.form.fields
+    label(for=index)= index
+    if field == "text" || field == "password" || field == "email"
+      input(type=field, name=index)
+    else if field == "textarea"
+      textarea(name=index)
+    br
+  input(type="hidden", value=generateToken(info.form.name), name="token")
+  button(type="submit")= info.form.submitText

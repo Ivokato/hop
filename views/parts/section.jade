@@ -1,0 +1,21 @@
+section
+  if info.title
+    h1!= info.title
+  if info.introduction
+    p.heavy!= info.introduction
+  if info.body
+    p!= info.body
+  if info.images
+    each image, imagename in info.images
+      img(src=image.src, alt=image.alt, title=image.alt)
+  if info.footer
+    p!= info.footer
+  if(info.extraContent)
+    each extraItem, i in info.extraContent
+      div(id=extraItem.name)!= extraItem.content
+  if info.items
+    each item, i in info.items
+      include item
+  if info.form
+    if info.form.fields
+      include form
