@@ -112,7 +112,7 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
+		res.render('section', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
 	}
 	else req.next();
 });
