@@ -70,7 +70,9 @@ function Site(name, path){
 	this.stylesheets = [];
   this.javascripts = [];
   this.extraContent = [];
-
+  
+  this.liveViewers = [];
+  
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
   this.header.menu = createMenuFromStructure(this);
@@ -132,6 +134,11 @@ function Site(name, path){
 				}
         else if(file._ext == 'ico'){
           console.log('ico file encountered: ' + file._base);
+        }
+        else if(file._ext == 'json'){
+          if(file._base == 'authentication'){
+            this.authInfo = JSON.parse(file._content);
+          }
         }
       }
 			noChildren = false;
@@ -208,8 +215,14 @@ function Site(name, path){
 		else{
 			this.addData(file);
 			this.header.menu = createMenuFromStructure(this);
+      
+      this.afterUpdate('/');
 		}
 	}
+  this.afterUpdate = function(path){
+    //reload liveViewers
+    if(this.liveViewers.length) for(var i in this.liveViewers) this.liveViewers[i].socket.emit('reload', {path: path});
+  }
 }).call(Site.prototype);
 
 function Section(name, site, data){
@@ -337,7 +350,10 @@ function Section(name, site, data){
 				item.update(pathArray, file);
 			}
 		}
-		else this.addData(file);
+		else{
+      this.addData(file);
+      this.site.afterUpdate('/' + this.foldername);
+    }
 	}
 }).call(Section.prototype);
 
@@ -422,6 +438,7 @@ function Item(name, section, data){
 	this.update = function(pathArray, file){
 		if(pathArray.length == 1){
 			this.addData(file);
+      this.section.site.afterUpdate('/' + this.section.foldername + '/' + this.foldername);
 		}
 	}
 }).call(Item.prototype);
