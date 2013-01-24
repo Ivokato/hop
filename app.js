@@ -21,9 +21,7 @@ var fs = require('fs'),
 var formTokens = {},
     tokenCleanJob = scheduler.scheduleJob('53 * * * *', function(){
       var now = new Date().getTime();
-      console.log('hoi: ', now);
       for(var i in formTokens){
-        console.log(formTokens[i].getTime(), now, now - formTokens[i].getTime(), 60 * 60 * 1000 );
         if(now - formTokens[i].getTime() > 60 * 60 * 1000) delete formTokens[i];
       }
     }); 
@@ -60,12 +58,10 @@ app.configure('development', function(){
 app.locals.generateToken = function(formName) {
   var str = formName + Math.random();
   formTokens[str] = new Date;
-  console.log(formTokens);
   return str;
 };
 
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
-//app.get('/users', user.list);
 
 app.get(/images\/(.+)/, function(req, res){
 	var imgPath = req.params[0],
@@ -94,14 +90,6 @@ app.get(/stylesheets\/(.+)/, function(req, res){
 	});
 });
 
-app.get('/:section/:item', function(req, res){
-	if(req.params.section && req.params.item){
-		req.next();
-	}
-	else req.next();
-});
-
-
 app.get('/:section', function(req, res){
 	if(req.params.section.split('.').length == 1){
 		var section = site.sections.findOne({foldername: req.params.section});
@@ -112,7 +100,19 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		res.render('defaultPage', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
+		res.render('section', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: req.params.section } );
+	}
+	else req.next();
+});
+
+app.get('/:section/:item', function(req, res){
+	if(req.params.section.split('.').length == 1 && req.params.item.split('.').length == 1){
+		var section = site.sections.findOne({foldername: req.params.section}),
+        item = section.items.findOne({foldername: req.params.item}),
+				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets).merge(item.stylesheets),
+				javascripts = site.javascripts.deepclone().merge(section.javascripts).merge(item.javascripts);
+    
+		res.render('item', { info: {item: item} , header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: false } );
 	}
 	else req.next();
 });
@@ -124,7 +124,6 @@ app.post('/:section/:item/respond', function(req, res){
 
 app.post('/formSubmit/:formName', function(req, res){
   res.redirect('/' + config.homesection)
-  console.log(req.body);
   if(formTokens[req.body.token]){
     delete formTokens[req.body.token];
     delete req.body.token;

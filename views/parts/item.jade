@@ -1,8 +1,12 @@
-article(id=item.foldername)
+article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
   if item.contents
     - var parts = item.contents
     if parts.title
-      h2!= parts.title
+      if parentSection
+        h2
+          a(href='/' + parentSection + '/' + item.foldername)!= parts.title
+      else
+        h2!= parts.title
     if parts.introduction
       p.heavy!= parts.introduction
     if parts.body
