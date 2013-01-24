@@ -21,9 +21,7 @@ var fs = require('fs'),
 var formTokens = {},
     tokenCleanJob = scheduler.scheduleJob('53 * * * *', function(){
       var now = new Date().getTime();
-      console.log('hoi: ', now);
       for(var i in formTokens){
-        console.log(formTokens[i].getTime(), now, now - formTokens[i].getTime(), 60 * 60 * 1000 );
         if(now - formTokens[i].getTime() > 60 * 60 * 1000) delete formTokens[i];
       }
     }); 
@@ -31,9 +29,8 @@ var formTokens = {},
 if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
 
-var site = new indexer.Site(config.sitename, config.contentpath);
-
-var app = express();
+var site = new indexer.Site(config.sitename, config.contentpath),
+    app = express();
 
 app.configure(function(){
   app.set('port', process.env.PORT || config.port || 3000);
@@ -60,12 +57,10 @@ app.configure('development', function(){
 app.locals.generateToken = function(formName) {
   var str = formName + Math.random();
   formTokens[str] = new Date;
-  console.log(formTokens);
   return str;
 };
 
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
-//app.get('/users', user.list);
 
 app.get(/images\/(.+)/, function(req, res){
 	var imgPath = req.params[0],
@@ -94,13 +89,12 @@ app.get(/stylesheets\/(.+)/, function(req, res){
 	});
 });
 
-app.get('/:section/:item', function(req, res){
-	if(req.params.section && req.params.item){
-		req.next();
-	}
-	else req.next();
+app.get('/login', function(req, res){
+  if(site.authInfo){
+    res.render('login', {info: {title: 'login to your dashboard'}});
+  }
+  else req.next();
 });
-
 
 app.get('/:section', function(req, res){
 	if(req.params.section.split('.').length == 1){
@@ -112,9 +106,40 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-		res.render('section', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts } );
+    if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
+    
+		res.render('section', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: req.params.section } );
 	}
 	else req.next();
+});
+
+app.get('/:section/:item', function(req, res){
+	if(req.params.section.split('.').length == 1 && req.params.item.split('.').length == 1){
+		var section = site.sections.findOne({foldername: req.params.section}),
+        item = section.items.findOne({foldername: req.params.item}),
+				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets).merge(item.stylesheets),
+				javascripts = site.javascripts.deepclone().merge(section.javascripts).merge(item.javascripts);
+    if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
+    
+		res.render('item', { info: {item: item} , header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: false } );
+	}
+	else req.next();
+});
+
+var lastLoginAttempt;
+app.post('/login', function(req, res){
+  //prevent bruteforcing
+  if(!(new Date().getTime() - lastLoginAttempt < 1000)){
+    if(req.body.name == site.authInfo.name && req.body.password == site.authInfo.password){
+      req.session.loggedOn = true;
+      res.redirect('/');
+    }
+    else{
+      lastLoginAttempt = new Date().getTime();
+      res.redirect('/login');
+    }
+  }
+  else setTimeout(function(){ res.redirect('/login'); }, 1000);
 });
 
 app.post('/:section/:item/respond', function(req, res){
@@ -124,7 +149,6 @@ app.post('/:section/:item/respond', function(req, res){
 
 app.post('/formSubmit/:formName', function(req, res){
   res.redirect('/' + config.homesection)
-  console.log(req.body);
   if(formTokens[req.body.token]){
     delete formTokens[req.body.token];
     delete req.body.token;
@@ -180,16 +204,13 @@ var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });
 
-//var io = sio.listen(server);
-//
-//
-//io.sockets.on('connection', function(socket){
-//	console.log('connection open');
-//	socket.emit('news', {hello: 'world'});
-//	socket.on('otherEvent', function(data){
-//		console.log(data);
-//	});
-//	socket.on('disconnect', function(){
-//		console.log('connection closed' );
-//	});
-//});
+var io = sio.listen(server);
+io.set('log level', 1);
+io.sockets.on('connection', function(socket){
+	var viewer = {socket: socket};
+  site.liveViewers.push(viewer);
+  
+	socket.on('disconnect', function(){
+    site.liveViewers.splice(site.liveViewers.indexOf(viewer), 1);
+	});
+});
