@@ -1,0 +1,15 @@
+extends layout
+
+block append header
+  if(stylesheets)
+    each stylesheet, index in stylesheets
+      link(href=stylesheet.src, rel="stylesheet")
+
+block append footer
+  if(javascripts)
+    each javascript, index in javascripts
+      script(src=javascript.src)
+
+block content
+  - var item = info.item
+  include parts/item
