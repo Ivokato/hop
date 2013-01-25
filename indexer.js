@@ -28,12 +28,13 @@ console.log(config);
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path, filePath).split('/');
-		if(eventName == 'unlink'){
+    
+		if(eventName == 'unlink' || eventName == 'delete'){
 			if(pathArray.length == 1) site.remove(pathArray[0]);
 			else site.sections.findOne({foldername: pathArray.shift()}).remove(pathArray);
 		}
 		else fmap({path: filePath, recursive: true}, function(error, file){
-			if(error) console.log(error);
+			if(error) console.log('error: ', error);
 			else{
 				var filename = file._base,
 						fileContainer = {};
@@ -261,7 +262,10 @@ function Section(name, site, data){
               'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:contain;}'
             )
 					}
-          else this.images.push(new Image(item, this.site.path));
+          else{
+            this.images.removeOne({name: item._base});
+            this.images.push(new Image(item, this.site.path));
+          }
         }
 				else if(item._ext == 'less' || item._ext == 'css'){
           this.stylesheets.removeOne({name: item._base});
@@ -326,8 +330,14 @@ function Section(name, site, data){
           if(filename == 'title') this.title = this.foldername;
         }
         else if(extension in imageTypes){
-          if(filename == 'background') if(fs.existsSync(this.site.path + this.foldername + '/background.less')) fs.unlinkSync(this.site.path + this.foldername + 'background.less');
-          else delete this.images.removeOne({name: filename});
+          if(filename == 'background'){
+            if(fs.existsSync(this.site.path + this.foldername + '/background.less')){
+              fs.unlinkSync(this.site.path + this.foldername + 'background.less');
+            }
+          }
+          else {
+            this.images.removeOne({name: filename});
+          }
         }
         else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
         else if(extension == 'js'){
