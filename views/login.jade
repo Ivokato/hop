@@ -1,0 +1,8 @@
+extend barehtml
+
+block layout
+  header
+    form(action="/login", method="POST")
+      input(type="text", name="name", placeholder="name")
+      input(type="password", name="password", placeholder="password")
+      input(type="submit") Login
