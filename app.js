@@ -2,6 +2,8 @@
  * Module dependencies.
  */
 
+console.log('------------------------------------------------------');
+
 require('./enrich.js');
 
 var fs = require('fs'),
@@ -63,12 +65,28 @@ app.locals.generateToken = function(formName) {
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 
 app.get(/images\/(.+)/, function(req, res){
+  console.log('image requested');
 	var imgPath = req.params[0],
 		  extension = imgPath.split('.').reverse()[0];
-	fs.readFile('content/' + imgPath, function(error, img){
-    res.writeHead(200, {'Content-Type': 'image/' + extension });
+  
+  site.imageCache.get(req.params[0], function(error, img){
+    if(error) {
+      console.log(error);
+    }
+    else res.writeHead(200, {'Content-Type': 'image/' + extension});
     res.end(img, 'binary');
-	});
+  });
+  
+//	fs.readFile('content/' + imgPath, function(error, img){
+//    if(error){
+//      console.log(error);
+//      req.next();
+//    }
+//    else{
+//      res.writeHead(200, {'Content-Type': 'image/' + extension });
+//      res.end(img, 'binary');
+//    }
+//	});
 });
 
 app.get(/javascripts\/(.+)/, function(req, res){
@@ -157,40 +175,40 @@ app.post('/formSubmit/:formName', function(req, res){
       
       var saveResponse = function (){
 	
-	fs.exists('content/FormResponses/' + req.params.formName, function(exists){
+      fs.exists('content/FormResponses/' + req.params.formName, function(exists){
 	  
-	  var saveResponse = function(){
-	    var date = new Date(),
-		str = '',
-		isFirst = true,
-		firstKey = '';
-	    for(var index in req.body){
-	      str += index + ': ' + req.body[index] + '\r\n';
-	      if(isFirst) firstKey = req.body[index];
-	    }
-	    fs.writeFile(
-	      'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
-	      str
-	    );
-	    
-	    //send copy to submitter    
-	    sendMail({
-	      from: req.body.Email,
-	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
-	      text: str
-	    }, console.log);
-	    
-	    //send copy to receiver    
-	    sendMail({
-	      to: req.body.Email,
-	      subject: 'Your ' + req.params.formName + ' submission',
-	      text: str
-	    }, console.log);
-	  };
+      var saveResponse = function(){
+        var date = new Date(),
+            str = '',
+            isFirst = true,
+            firstKey = '';
+        for(var index in req.body){
+          str += index + ': ' + req.body[index] + '\r\n';
+          if(isFirst) firstKey = req.body[index];
+        }
+        fs.writeFile(
+          'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
+          str
+        );
+        
+        //send copy to submitter    
+        sendMail({
+          from: req.body.Email,
+          subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
+          text: str
+        }, console.log);
+        
+        //send copy to receiver    
+        sendMail({
+          to: req.body.Email,
+          subject: 'Your ' + req.params.formName + ' submission',
+          text: str
+        }, console.log);
+      };
 	  
-	  if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
-	  else saveResponse();
-	});
+      if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
+      else saveResponse();
+    });
 	
       };
       

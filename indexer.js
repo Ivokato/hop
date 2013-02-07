@@ -3,6 +3,7 @@ var foldermap = require("foldermap"),
     fmap = foldermap.map,
     fmapSync = foldermap.mapSync,
     fs = require("fs"),
+    imgMagick = require("imagemagick"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
 		config = require("./config.json"),
@@ -74,6 +75,9 @@ function Site(name, path){
   
   this.liveViewers = [];
   
+  this.defaultImageSize = {width: 500, height: 500};
+  this.imageCache = new ImageCache(10000);
+  
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
   this.header.menu = createMenuFromStructure(this);
@@ -137,8 +141,17 @@ function Site(name, path){
           console.log('ico file encountered: ' + file._base);
         }
         else if(file._ext == 'json'){
-          if(file._base == 'authentication'){
-            this.authInfo = JSON.parse(file._content);
+          try{
+            var object = JSON.parse(file._content);
+          }
+          catch(e){
+            if(!e){
+              switch(file._base){
+                case 'authentication':  this.authInfo = object; break;
+                case 'imageSizes': this.defaultImageSize = object; break;
+              }
+            }
+            else console.log(file._base, e);
           }
         }
       }
@@ -264,7 +277,7 @@ function Section(name, site, data){
 					}
           else{
             this.images.removeOne({name: item._base});
-            this.images.push(new Image(item, this.site.path));
+            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize));
           }
         }
 				else if(item._ext == 'less' || item._ext == 'css'){
@@ -404,7 +417,7 @@ function Item(name, section, data){
         }
         else{
           if(part._ext in imageTypes){
-            this.contents.images.push(new Image(part, this.section.site.path));
+            this.contents.images.push(new Image(part, this.section.site.path, this.section.site.defaultImageSize));
           }
           else if(part._ext == 'less' || part._ext == 'css'){
             this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
@@ -461,11 +474,16 @@ function createMenuFromStructure(structure){
   return menu
 }
 
-function Image(fileRef, basepath){
+function Image(fileRef, basepath, size){
+  var path = fileRef._path.split('/');
+  path.splice(path.length - 1, 1, fileRef._base);
   this.name = fileRef._base;
 	this.alt = fileRef._base;
-	this.src = '/images/' + stripPath(basepath, fileRef._path);
+	this.base = '/images/' + stripPath(basepath, path.join('/'));
+  this.ext = fileRef._ext;
 	this.date = fileRef.date;
+  this.width = size.width;
+  this.height = size.height;
 }
 
 function addTextFile(file){
@@ -495,5 +513,134 @@ function Form(json){
   this.submitText = json.submitText;
   this.completeText = json.completeText;
 }
+
+function validatePath(basepath, path, callback){
+  var array = path.split('/'),
+      lowestDirectory = array.shift(),
+      str = (basepath ? basepath + '/' : '') + lowestDirectory;
+  
+  console.log('validating: array: ', array, ', lowestDirectory: ', lowestDirectory, ', str: ', str);
+  
+  fs.exists(str, function(exists){
+    console.log('exists: ', exists);
+    if(exists){
+      if(array.length) validatePath(str, array.join('/'), callback);
+      else callback();
+    }
+    else fs.mkdir(str, function(error){
+      if(error) console.log(error);
+      else {
+        if(array.length) validatePath(str, array.join('/'), callback);
+        else callback();
+      }
+    })
+  });
+}
+
+function ImageCache(maxSize){
+  this.maxSize = maxSize;
+  this.currentSize = 0;
+  this.entries = {};
+  fs.exists('imagecache', function(exists){
+    if(!exists){
+      fs.mkdir('imagecache');
+    }
+    else{
+      //clear folder and always start with clean cache?
+    }
+  });
+}
+(function(){
+  this.clear = function(path){
+    for(var i in this.entries){
+      console.log(this.entries[i]);
+    }
+  };
+  this.get = function(src, callback){
+    var cache = this;
+    console.log('src: ', src);
+    var fileArray = src.split('-'),
+        dimensions = fileArray.pop().split('.'),
+        extension = dimensions.pop(),
+        filename = fileArray.join('-') + '.' + extension,
+        dimensionsConcatted = dimensions[0];
+    
+    dimensions = dimensionsConcatted.split('x');
+    dimensions = {width: dimensions[0], height: dimensions[1]};
+    fileArray = fileArray.join('-').split('/');
+    fileArray.pop();
+    
+    console.log(filename, dimensions);
+    
+    if(this.entries[filename]){
+      var entry = this.entries[filename];
+      if(entry.sizes[dimensionsConcatted]){
+        entry.sizes[dimensionsConcatted] = new Date().getTime();
+        console.log('imagecache/' + src);
+        fs.readFile('imagecache/' + src, function(error, img){
+          if(error) callback(error);
+          else callback(null, img);
+        });
+      }
+      else{
+        if(entry.width < dimensions.width && entry.height < dimensions.height){
+          fs.readFile('content/' + filename, function(error, img){
+            callback(error, img);
+          });
+        }
+        else imgMagick.resize({
+          srcPath: 'content/' + filename,
+          dstPath: 'imagecache/' + src,
+          width: dimensions.width,
+          height: dimensions.height,
+          progressive: true,
+          quality: 0.8
+        }, function(err, stdout, sderr){
+          cache.entries[filename].sizes[dimensionsConcatted] = new Date().getTime();
+          
+          fs.readFile('imagecache/' + src, function(error, img){
+            callback(error, img);
+          });
+        });
+      }
+    }
+    else{
+      imgMagick.identify(['-format', '%wx%h', 'content/' + filename], function(error, output){
+        var output = output.split('x'),
+            width = +output[0],
+            height = +output[1];
+        console.log(width, height);
+        cache.entries[filename] = {
+          sizes: {},
+          width: width,
+          height: height
+        };
+        
+        if(width < dimensions.width && height < dimensions.height){
+          fs.readFile('content/' + filename, function(error, img){
+            callback(error, img);
+          });
+        }
+        else validatePath('imagecache', fileArray.join('/'), function(error){
+          if(error) console.log(error);
+          else imgMagick.resize({
+            srcPath: 'content/' + filename,
+            dstPath: 'imagecache/' + src,
+            width: dimensions.width,
+            height: dimensions.height,
+            progressive: true,
+            quality: 0.8
+          }, function(err, stdout, sderr){
+            cache.entries[filename].sizes[dimensionsConcatted] = new Date().getTime();
+            
+            fs.readFile('imagecache/' + src, function(error, img){
+              callback(error, img);
+            });
+          });
+        });
+      });
+    }
+  };
+}).call(ImageCache.prototype);
 
 exports.Site = Site;

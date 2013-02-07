@@ -15,7 +15,7 @@ article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
       p!= parts.footer
     if parts.images
       each image, imagename in parts.images
-        img(src=image.src, alt=image.alt, title=image.alt)
+        img(src=image.base + '-' + image.width + 'x' + image.height + '.' + image.ext, alt=image.alt, title=image.alt)
     if parts.extraContent
       each extraItem, index in parts.extraContent
         div(id=extraItem.name)!= extraItem.content
