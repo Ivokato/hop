@@ -69,24 +69,23 @@ app.get(/images\/(.+)/, function(req, res){
 	var imgPath = req.params[0],
 		  extension = imgPath.split('.').reverse()[0];
   
-  site.imageCache.get(req.params[0], function(error, img){
+	if(/-[0-9]+x[0-9]/.test(req.params[0])) site.imageCache.get(req.params[0], function(error, img){
     if(error) {
       console.log(error);
     }
     else res.writeHead(200, {'Content-Type': 'image/' + extension});
     res.end(img, 'binary');
   });
-  
-//	fs.readFile('content/' + imgPath, function(error, img){
-//    if(error){
-//      console.log(error);
-//      req.next();
-//    }
-//    else{
-//      res.writeHead(200, {'Content-Type': 'image/' + extension });
-//      res.end(img, 'binary');
-//    }
-//	});
+	else fs.readFile('content/' + imgPath, function(error, img){
+    if(error){
+      console.log(error);
+      req.next();
+    }
+    else{
+      res.writeHead(200, {'Content-Type': 'image/' + extension });
+      res.end(img, 'binary');
+    }
+	});
 });
 
 app.get(/javascripts\/(.+)/, function(req, res){
@@ -161,7 +160,6 @@ app.post('/login', function(req, res){
 });
 
 app.post('/:section/:item/respond', function(req, res){
-  console.log('req.post: ', req.body);
   res.redirect("/" + req.params.section);
 });
 

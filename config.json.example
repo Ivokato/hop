@@ -3,9 +3,10 @@
   "port": 1000,
   "homesection": "Nieuws",
   "contentpath": "content/",
-  "imageCacheSize": 100000,
+  "imageCacheLimit": 100,
 	"mailgunSettings": {
 		"domain": "user.mailgun.org",
 		"key": "key-123456789",
 		"defaultAddress": "no@bo.dy"
+  }
 }

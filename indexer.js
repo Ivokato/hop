@@ -7,6 +7,7 @@ var foldermap = require("foldermap"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
 		config = require("./config.json"),
+    ImageCache = require('./imageCacher.js').ImageCache,
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -21,11 +22,8 @@ var foldermap = require("foldermap"),
     },
     reservedFolderNames = {
       FormResponses: true
-    },
-		config = require('./config.json')
+    }
 ;
-
-console.log(config);
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path, filePath).split('/');
@@ -47,7 +45,6 @@ function redefine(site, eventName, filePath){
 	}
 
 function enrichDiskData(diskdata){
-  console.log(diskdata);
 	for(var index in diskdata){
 		var file = diskdata[index];
 		Object.defineProperty(file, 'date', {value: fs.statSync(file._path).mtime});
@@ -76,7 +73,7 @@ function Site(name, path){
   this.liveViewers = [];
   
   this.defaultImageSize = {width: 500, height: 500};
-  this.imageCache = new ImageCache(10000);
+  this.imageCache = new ImageCache(config.imageCacheLimit);
   
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
@@ -103,7 +100,7 @@ function Site(name, path){
 					if(file._base.toLowerCase() == 'background') {
 						this.background = stripPath(this.path, file._path);
             if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
-						fs.writeFile('content/background.less', 'body{background-image: url(/images/' + this.background + ');}')
+						fs.writeFile('content/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.path, file._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}')
 					}
 				}
 				else if(file._ext == 'less' || file._ext == 'css'){
@@ -145,14 +142,13 @@ function Site(name, path){
             var object = JSON.parse(file._content);
           }
           catch(e){
-            if(!e){
-              switch(file._base){
-                case 'authentication':  this.authInfo = object; break;
-                case 'imageSizes': this.defaultImageSize = object; break;
-              }
-            }
-            else console.log(file._base, e);
+            console.log(file._base, e);
           }
+					switch(file._base){
+            case 'authentication':  this.authInfo = object; break;
+            case 'imageSizes': this.defaultImageSize = object; break;
+          }
+					console.log(this.authInfo);
         }
       }
 			noChildren = false;
@@ -187,6 +183,7 @@ function Site(name, path){
 	this.remove = function(name){
 		if(name.split('.').length == 1) {
 			this.sections.removeOne({foldername: name});
+      this.imageCache.clear(name);
 		}
 		else{
 			var split = name.split('.'),
@@ -234,6 +231,7 @@ function Site(name, path){
 		}
 	}
   this.afterUpdate = function(path){
+    
     //reload liveViewers
     if(this.liveViewers.length) for(var i in this.liveViewers) this.liveViewers[i].socket.emit('reload', {path: path});
   }
@@ -267,16 +265,14 @@ function Section(name, site, data){
       else{
         if(item._ext in imageTypes){
           if(item._base.toLowerCase() == 'background') {
-            //continue;
-            console.log(this.site.path + this.foldername + '/background.less');
-            //if(fs.existsSync('content/' + this.foldername + '/background.css')) fs.unlinkSync('content/' + this.foldername + 'style.css');
+            
 						fs.writeFileSync(
               this.site.path + this.foldername + '/background.less',
-              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:contain;}'
+              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}'
             )
 					}
           else{
-            this.images.removeOne({name: item._base});
+            if(this.images.removeOne({name: item._base})) this.site.imageCache.clear( this.foldername + '/' + item._name);
             this.images.push(new Image(item, this.site.path, this.site.defaultImageSize));
           }
         }
@@ -349,7 +345,7 @@ function Section(name, site, data){
             }
           }
           else {
-            this.images.removeOne({name: filename});
+            if(this.images.removeOne({name: filename})) this.site.imageCache.clear( this.foldername + '/' + filename);
           }
         }
         else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
@@ -359,6 +355,7 @@ function Section(name, site, data){
       }
       else{ //is a directory
         this.items.removeOne({foldername: name});
+        this.site.imageCache.clear(this.foldername + '/' + name);
       }
 		}
 		else{
@@ -417,7 +414,9 @@ function Item(name, section, data){
         }
         else{
           if(part._ext in imageTypes){
-            this.contents.images.push(new Image(part, this.section.site.path, this.section.site.defaultImageSize));
+            //if(this.contents.images.indexOf()) TODO image cache clearing when existing. and prevent doubles
+            if(this.contents.images.removeOne({name: part._base})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
+            this.contents.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
           }
           else if(part._ext == 'less' || part._ext == 'css'){
             this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
@@ -448,7 +447,7 @@ function Item(name, section, data){
         removeTextFile.call(this.contents, filename);
       }
       else if(extension in imageTypes) {
-        this.contents.images.removeOne({name: filename});
+        if(this.contents.images.removeOne({name: filename})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + filename);
       }
       else if(extension == 'css' || extension == 'less'){
         this.stylesheets.removeOne({name: filename});
@@ -513,134 +512,5 @@ function Form(json){
   this.submitText = json.submitText;
   this.completeText = json.completeText;
 }
-
-function validatePath(basepath, path, callback){
-  var array = path.split('/'),
-      lowestDirectory = array.shift(),
-      str = (basepath ? basepath + '/' : '') + lowestDirectory;
-  
-  console.log('validating: array: ', array, ', lowestDirectory: ', lowestDirectory, ', str: ', str);
-  
-  fs.exists(str, function(exists){
-    console.log('exists: ', exists);
-    if(exists){
-      if(array.length) validatePath(str, array.join('/'), callback);
-      else callback();
-    }
-    else fs.mkdir(str, function(error){
-      if(error) console.log(error);
-      else {
-        if(array.length) validatePath(str, array.join('/'), callback);
-        else callback();
-      }
-    })
-  });
-}
-
-function ImageCache(maxSize){
-  this.maxSize = maxSize;
-  this.currentSize = 0;
-  this.entries = {};
-  fs.exists('imagecache', function(exists){
-    if(!exists){
-      fs.mkdir('imagecache');
-    }
-    else{
-      //clear folder and always start with clean cache?
-    }
-  });
-}
-(function(){
-  this.clear = function(path){
-    for(var i in this.entries){
-      console.log(this.entries[i]);
-    }
-  };
-  this.get = function(src, callback){
-    var cache = this;
-    console.log('src: ', src);
-    var fileArray = src.split('-'),
-        dimensions = fileArray.pop().split('.'),
-        extension = dimensions.pop(),
-        filename = fileArray.join('-') + '.' + extension,
-        dimensionsConcatted = dimensions[0];
-    
-    dimensions = dimensionsConcatted.split('x');
-    dimensions = {width: dimensions[0], height: dimensions[1]};
-    fileArray = fileArray.join('-').split('/');
-    fileArray.pop();
-    
-    console.log(filename, dimensions);
-    
-    if(this.entries[filename]){
-      var entry = this.entries[filename];
-      if(entry.sizes[dimensionsConcatted]){
-        entry.sizes[dimensionsConcatted] = new Date().getTime();
-        console.log('imagecache/' + src);
-        fs.readFile('imagecache/' + src, function(error, img){
-          if(error) callback(error);
-          else callback(null, img);
-        });
-      }
-      else{
-        if(entry.width < dimensions.width && entry.height < dimensions.height){
-          fs.readFile('content/' + filename, function(error, img){
-            callback(error, img);
-          });
-        }
-        else imgMagick.resize({
-          srcPath: 'content/' + filename,
-          dstPath: 'imagecache/' + src,
-          width: dimensions.width,
-          height: dimensions.height,
-          progressive: true,
-          quality: 0.8
-        }, function(err, stdout, sderr){
-          cache.entries[filename].sizes[dimensionsConcatted] = new Date().getTime();
-          
-          fs.readFile('imagecache/' + src, function(error, img){
-            callback(error, img);
-          });
-        });
-      }
-    }
-    else{
-      imgMagick.identify(['-format', '%wx%h', 'content/' + filename], function(error, output){
-        var output = output.split('x'),
-            width = +output[0],
-            height = +output[1];
-        console.log(width, height);
-        cache.entries[filename] = {
-          sizes: {},
-          width: width,
-          height: height
-        };
-        
-        if(width < dimensions.width && height < dimensions.height){
-          fs.readFile('content/' + filename, function(error, img){
-            callback(error, img);
-          });
-        }
-        else validatePath('imagecache', fileArray.join('/'), function(error){
-          if(error) console.log(error);
-          else imgMagick.resize({
-            srcPath: 'content/' + filename,
-            dstPath: 'imagecache/' + src,
-            width: dimensions.width,
-            height: dimensions.height,
-            progressive: true,
-            quality: 0.8
-          }, function(err, stdout, sderr){
-            cache.entries[filename].sizes[dimensionsConcatted] = new Date().getTime();
-            
-            fs.readFile('imagecache/' + src, function(error, img){
-              callback(error, img);
-            });
-          });
-        });
-      });
-    }
-  };
-}).call(ImageCache.prototype);
 
 exports.Site = Site;
