@@ -63,7 +63,12 @@ function Site(name, path){
   this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
   this.sections = [];
   this.path = path;
-	this.order = {sections: 'date', stylesheets: 'date', javascripts: 'date'};
+	this.orderPattern = {
+    sections: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []},
+    extraContent: {unassigned: 'date', assigned: []}
+  };
   this.menu = {};
 	this.header = {};
 	this.stylesheets = [];
@@ -147,8 +152,8 @@ function Site(name, path){
 					switch(file._base){
             case 'authentication':  this.authInfo = object; break;
             case 'imageSizes': this.defaultImageSize = object; break;
+            case 'order': replaceProps(this.orderPattern, json);
           }
-					console.log(this.authInfo);
         }
       }
 			noChildren = false;
@@ -163,22 +168,7 @@ function Site(name, path){
 		this.sort();
   };
 	this.sort = function(){
-		for(var type in this.order){
-			if(this.order[type].split('date').length > 1){
-				var dates = [];
-				for(var index in this[type]){
-					dates.push({name: index, date: this[type][index].date});
-				}
-				dates.sort(function(a, b){ return b.date > a.date ? -1 : 1 });
-				if(this.order[type].split('reverse').length > 1){
-					dates.reverse();
-				}
-				for(var index in dates){
-					this[type][dates[index].name].order = index;
-				}
-				this[type].sort(function(a,b){ return a.order > b.order ? -1 : 1 });
-			}
-		}
+		multiSort(this);
 	}
 	this.remove = function(name){
 		if(name.split('.').length == 1) {
@@ -242,7 +232,13 @@ function Section(name, site, data){
 	this.foldername = name;
   this.title = name;
 	Object.defineProperty(this, 'site', {value: site});
-	this.order = {items: 'date', images: 'date', stylesheets: 'date', javascripts: 'date'};
+	this.orderPattern = {
+    items: {unassigned: 'date', assigned: []},
+    images: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []},
+    extraContent: {unassigned: 'date', assigned: []}
+  };
   this.items = [];
   this.images = [];
   this.extraContent = [];
@@ -261,7 +257,9 @@ function Section(name, site, data){
         console.log('file ignored: ' + item._base);
         continue;
       }
-      if(item._type == 'directory') this.items.push(new Item(itemname, this, item));
+      if(item._type == 'directory'){
+        this.items.push(new Item(itemname, this, item));
+      }
       else{
         if(item._ext in imageTypes){
           if(item._base.toLowerCase() == 'background') {
@@ -301,31 +299,21 @@ function Section(name, site, data){
           }
         }
         else if(item._ext == 'json'){
-          var json = JSON.parse(item._content);
+          try{ var json = JSON.parse(item._content); }
+          catch(e){
+            console.log(e, item._base);
+            return;
+          }
           if(item._base == 'form') this.form = new Form(json);
+          if(item._base == 'order') replaceProps(this.orderPattern, json);
         }
       }
     }
 		this.sort();
   };
 	this.sort = function(){
-		for(var type in this.order){
-			if(this.order[type].split('date').length > 1){
-				var dates = [];
-				for(var index in this[type]){
-					dates.push({name: index, date: this[type][index].date});
-				}
-				dates.sort(function(a, b){ return b.date > a.date ? -1 : 1 });
-				if(this.order[type].split('reverse').length > 1){
-					dates.reverse();
-				}
-				for(var index in dates){
-					this[type][dates[index].name].order = index;
-				}
-				this[type].sort(function(a,b){ return a.order > b.order ? -1 : 1 });
-			}
-		}
-	}
+		multiSort(this);
+	};
 	this.remove = function(pathArray){
 		if(pathArray.length == 1){
 			var name = pathArray[0],
@@ -385,6 +373,16 @@ function Item(name, section, data){
     extraContent: [],
     allowResponses: false
   };
+  this.orderPattern = {
+    extraContent: {unassigned: 'date', assigned: []},
+    images: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []}
+  };
+  this.title = name;
+  this.images = [];
+  this.extraContent = [];
+  this.allowResponses = false;
   this.name = name;
 	this.foldername = name;
 	this.stylesheets = [];
@@ -404,38 +402,45 @@ function Item(name, section, data){
       }
       if(part._type == 'directory'){
         if(part._base.toLowerCase() == 'responses'){
-          this.contents.allowResponses = true;
-          this.contents.responses = [];
+          this.allowResponses = true;
+          this.responses = [];
         }
       }
       else{
         if(part._ext == 'txt'){
-          addTextFile.call(this.contents, part);
+          addTextFile.call(this, part);
         }
-        else{
-          if(part._ext in imageTypes){
-            //if(this.contents.images.indexOf()) TODO image cache clearing when existing. and prevent doubles
-            if(this.contents.images.removeOne({name: part._base})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
-            this.contents.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
+        else if(part._ext in imageTypes){
+          //if(this.contents.images.indexOf()) TODO image cache clearing when existing. and prevent doubles
+          if(this.images.removeOne({name: part._base})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
+          this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
+        }
+        else if(part._ext == 'less' || part._ext == 'css'){
+          this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
+          if(part._ext == 'less'){
+            lessparser.parse(part._content, function(error, tree){
+              if(error) return console.log(error);
+              var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
+              if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
+              fs.writeFileSync(fullpath, tree.toCSS());
+            });
           }
-          else if(part._ext == 'less' || part._ext == 'css'){
-            this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
-            if(part._ext == 'less'){
-              lessparser.parse(part._content, function(error, tree){
-                if(error) return console.log(error);
-                var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
-                if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
-                fs.writeFileSync(fullpath, tree.toCSS());
-              });
-            }
+        }
+        else if(part._ext == 'js'){
+          this.javascripts.removeOne({name: part._base});
+          this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
+        }
+        else if(part._ext == 'json'){
+          try{ var json = JSON.parse(part._content); }
+          catch(e){
+            console.log(e, part._base);
+            return;
           }
-          else if(part._ext == 'js'){
-            this.javascripts.removeOne({name: part._base});
-            this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
-          }
+          if(part._base == 'order') replaceProps(this.orderPattern, json);
         }
       }
     }
+    multiSort(this);
   };
 	this.remove = function(name){
 		if(typeof name == 'object' && name.length == 1) name = name[0];
@@ -444,10 +449,10 @@ function Item(name, section, data){
 				extension = split[1];
     if(extension){ //is a file
       if(extension == 'txt') {
-        removeTextFile.call(this.contents, filename);
+        removeTextFile.call(this, filename);
       }
       else if(extension in imageTypes) {
-        if(this.contents.images.removeOne({name: filename})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + filename);
+        if(this.images.removeOne({name: filename})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + filename);
       }
       else if(extension == 'css' || extension == 'less'){
         this.stylesheets.removeOne({name: filename});
@@ -471,6 +476,12 @@ function createMenuFromStructure(structure){
     menu[structure.sections[index].order] = structure.sections[index].name;
   }
   return menu
+}
+
+function replaceProps(a, b){
+  for(var i in a){
+    if(b[i]) a[i] = b[i];
+  }
 }
 
 function Image(fileRef, basepath, size){
@@ -503,6 +514,41 @@ function removeTextFile(filename){
 
 function stripPath(base, full){
 	return full.split(base)[1];
+}
+
+function multiSort(parent){
+  for(var type in parent.orderPattern){
+    
+    var set = parent.orderPattern[type],
+        listedItems = set.assigned,
+        existingItems = parent[type],
+        n = 0;
+    for(var item in listedItems){
+      var name = listedItems[item],
+          item = existingItems.findOne({name: name});
+      if(item){
+        item.order = n;
+        n++;
+      }
+    }
+    
+    if(set.unassigned && set.unassigned.split('date').length > 1){
+      var dates = [];
+      for(var index in existingItems){
+        if(set.assigned.indexOf(existingItems[index].name) == -1){
+          dates.push({name: index, date: existingItems[index].date});
+        }
+      }
+      dates.sort(function(a, b){ return b.date - a.date; });
+      if(set.unassigned.split('reverse').length > 1){
+        dates.reverse();
+      }
+      for(var index in dates){
+        existingItems[dates[index].name].order = +index + n;
+      }
+    }
+    existingItems.sort(function(a,b){ return a.order - b.order });
+  }
 }
 
 function Form(json){
