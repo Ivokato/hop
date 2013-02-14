@@ -152,7 +152,7 @@ function Site(name, path){
 					switch(file._base){
             case 'authentication':  this.authInfo = object; break;
             case 'imageSizes': this.defaultImageSize = object; break;
-            case 'order': replaceProps(this.orderPattern, json);
+            case 'order': replaceProps(this.orderPattern, object); break;
           }
         }
       }
