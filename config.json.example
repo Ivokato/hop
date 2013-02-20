@@ -7,4 +7,5 @@
 		"domain": "user.mailgun.org",
 		"key": "key-123456789",
 		"defaultAddress": "no@bo.dy"
+	}
 }
