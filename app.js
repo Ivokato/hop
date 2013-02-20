@@ -2,6 +2,8 @@
  * Module dependencies.
  */
 
+console.log('------------------------------------------------------');
+
 require('./enrich.js');
 
 var fs = require('fs'),
@@ -12,7 +14,7 @@ var fs = require('fs'),
     path = require('path'),
     indexer = require('./indexer.js'),
     config = require('./config.json'),
-    sio = require('socket.io'),
+    socketeer = require('./socketeer.js').socketeer,
     gzippo = require('gzippo'),
     scheduler = require('node-schedule'),
     sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail
@@ -63,11 +65,30 @@ app.locals.generateToken = function(formName) {
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 
 app.get(/images\/(.+)/, function(req, res){
+  console.log('image requested');
 	var imgPath = req.params[0],
 		  extension = imgPath.split('.').reverse()[0];
-	fs.readFile('content/' + imgPath, function(error, img){
-    res.writeHead(200, {'Content-Type': 'image/' + extension });
-    res.end(img, 'binary');
+  
+	//check if sized image is requested, then serve from resizerCache
+	if(/-[0-9]+x[0-9]/.test(req.params[0])){
+		site.imageCache.get(req.params[0], function(error, img){
+			if(error) {
+				console.log(error);
+			}
+			else res.writeHead(200, {'Content-Type': 'image/' + extension});
+			res.end(img, 'binary');
+		});
+	}
+	//serve normal image;
+	else fs.readFile('content/' + imgPath, function(error, img){
+    if(error){
+      console.log(error);
+      req.next();
+    }
+    else{
+      res.writeHead(200, {'Content-Type': 'image/' + extension });
+      res.end(img, 'binary');
+    }
 	});
 });
 
@@ -142,6 +163,7 @@ app.post('/login', function(req, res){
   else setTimeout(function(){ res.redirect('/login'); }, 1000);
 });
 
+//not used yet
 app.post('/:section/:item/respond', function(req, res){
   console.log('req.post: ', req.body);
   res.redirect("/" + req.params.section);
@@ -157,40 +179,40 @@ app.post('/formSubmit/:formName', function(req, res){
       
       var saveResponse = function (){
 	
-	fs.exists('content/FormResponses/' + req.params.formName, function(exists){
+      fs.exists('content/FormResponses/' + req.params.formName, function(exists){
 	  
-	  var saveResponse = function(){
-	    var date = new Date(),
-		str = '',
-		isFirst = true,
-		firstKey = '';
-	    for(var index in req.body){
-	      str += index + ': ' + req.body[index] + '\r\n';
-	      if(isFirst) firstKey = req.body[index];
-	    }
-	    fs.writeFile(
-	      'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
-	      str
-	    );
-	    
-	    //send copy to submitter    
-	    sendMail({
-	      from: req.body.Email,
-	      subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
-	      text: str
-	    }, console.log);
-	    
-	    //send copy to receiver    
-	    sendMail({
-	      to: req.body.Email,
-	      subject: 'Your ' + req.params.formName + ' submission',
-	      text: str
-	    }, console.log);
-	  };
+      var saveResponse = function(){
+        var date = new Date(),
+            str = '',
+            isFirst = true,
+            firstKey = '';
+        for(var index in req.body){
+          str += index + ': ' + req.body[index] + '\r\n';
+          if(isFirst) firstKey = req.body[index];
+        }
+        fs.writeFile(
+          'content/FormResponses/' + req.params.formName + '/' + date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getHours() + 'h' + date.getMinutes() + 'm' + date.getSeconds() + 's.txt',
+          str
+        );
+        
+        //send copy to submitter    
+        sendMail({
+          from: req.body.Email,
+          subject: 'A' + ('aeouiyh'.indexOf(req.params.formName[0]) == -1  ? '' : 'n' ) + ' ' + req.params.formName + ' submission!',
+          text: str
+        }, console.log);
+        
+        //send copy to receiver    
+        sendMail({
+          to: req.body.Email,
+          subject: 'Your ' + req.params.formName + ' submission',
+          text: str
+        }, console.log);
+      };
 	  
-	  if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
-	  else saveResponse();
-	});
+      if(!exists) fs.mkdir('content/FormResponses/' + req.params.formName, saveResponse);
+      else saveResponse();
+    });
 	
       };
       
@@ -204,13 +226,4 @@ var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });
 
-var io = sio.listen(server);
-io.set('log level', 1);
-io.sockets.on('connection', function(socket){
-	var viewer = {socket: socket};
-  site.liveViewers.push(viewer);
-  
-	socket.on('disconnect', function(){
-    site.liveViewers.splice(site.liveViewers.indexOf(viewer), 1);
-	});
-});
+socketeer(server, site, app);

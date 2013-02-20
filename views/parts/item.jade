@@ -1,32 +1,30 @@
 article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
-  if item.contents
-    - var parts = item.contents
-    if parts.title
-      if parentSection
-        h2
-          a(href='/' + parentSection + '/' + item.foldername)!= parts.title
-      else
-        h2!= parts.title
-    if parts.introduction
-      p.heavy!= parts.introduction
-    if parts.body
-      p!= parts.body
-    if parts.footer
-      p!= parts.footer
-    if parts.images
-      each image, imagename in parts.images
-        img(src=image.src, alt=image.alt, title=image.alt)
-    if parts.extraContent
-      each extraItem, index in parts.extraContent
-        div(id=extraItem.name)!= extraItem.content
-    if parts.allowResponses
-      .responses
-        if parts.responses
-          each response, i in parts.responses
-            .response
-              h6 by {response.author}
-              p= response.text
-        form(method="post", action="/" + info.title + "/" + item.foldername + "/respond")
-          input#responseAuthor(type="text")
-          textarea#responseText
-          input#sendResponse(type="submit", value="place comment")
+  if item.title
+    if parentSection
+      h2
+        a(href='/' + parentSection + '/' + item.foldername)!= item.title
+    else
+      h2!= item.title
+  if item.introduction
+    p.heavy!= item.introduction
+  if item.body
+    p!= item.body
+  if item.footer
+    p!= item.footer
+  if item.images
+    each image, imagename in item.images
+      img(src=image.base + '-' + image.width + 'x' + image.height + '.' + image.ext, alt=image.alt, title=image.alt)
+  if item.extraContent
+    each extraItem, index in item.extraContent
+      div(id=extraItem.name)!= extraItem.content
+  if item.allowResponses
+    .responses
+      if item.responses
+        each response, i in item.responses
+          .response
+            h6 by {response.author}
+            p= response.text
+      form(method="post", action="/" + info.title + "/" + item.foldername + "/respond")
+        input#responseAuthor(type="text")
+        textarea#responseText
+        input#sendResponse(type="submit", value="place comment")

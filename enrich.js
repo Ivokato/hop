@@ -5,12 +5,26 @@ function findOne(property){
 	}
 }
 
-function removeOne(property){
+function removeOnee(property){
 	for(var name in property) {}
 	for(var i in this){
 		if(this[i][name] == property[name]){
 			this.splice(i, 1);
 			break;
+		}
+	}
+}
+
+function removeOne(property){
+	for(var i in this){
+    var matching = true;
+    for(var name in property) {
+      matching = this[i][name] == property[name];
+      if(!matching) break;
+    }
+		if(matching){
+			this.splice(i, 1);
+			return true;
 		}
 	}
 }

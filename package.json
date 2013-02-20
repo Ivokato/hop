@@ -15,6 +15,7 @@
 		"socket.io": "*",
 		"gzippo": "*",
 		"request": "*",
-    "node-schedule": "*"
+    "node-schedule": "*",
+    "imagemagick": "*"
   }
 }

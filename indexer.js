@@ -3,9 +3,11 @@ var foldermap = require("foldermap"),
     fmap = foldermap.map,
     fmapSync = foldermap.mapSync,
     fs = require("fs"),
+    imgMagick = require("imagemagick"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
 		config = require("./config.json"),
+    ImageCache = require('./imageCacher.js').ImageCache,
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -20,11 +22,8 @@ var foldermap = require("foldermap"),
     },
     reservedFolderNames = {
       FormResponses: true
-    },
-		config = require('./config.json')
+    }
 ;
-
-console.log(config);
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path, filePath).split('/');
@@ -46,7 +45,6 @@ function redefine(site, eventName, filePath){
 	}
 
 function enrichDiskData(diskdata){
-  console.log(diskdata);
 	for(var index in diskdata){
 		var file = diskdata[index];
 		Object.defineProperty(file, 'date', {value: fs.statSync(file._path).mtime});
@@ -65,7 +63,12 @@ function Site(name, path){
   this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
   this.sections = [];
   this.path = path;
-	this.order = {sections: 'date', stylesheets: 'date', javascripts: 'date'};
+	this.orderPattern = {
+    sections: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []},
+    extraContent: {unassigned: 'date', assigned: []}
+  };
   this.menu = {};
 	this.header = {};
 	this.stylesheets = [];
@@ -73,6 +76,9 @@ function Site(name, path){
   this.extraContent = [];
   
   this.liveViewers = [];
+  
+  this.defaultImageSize = {width: 500, height: 500};
+  this.imageCache = new ImageCache(config.imageCacheLimit);
   
   if(this.diskdata && countChildren(this.diskdata)) this.addData(this.diskdata);
   
@@ -99,7 +105,7 @@ function Site(name, path){
 					if(file._base.toLowerCase() == 'background') {
 						this.background = stripPath(this.path, file._path);
             if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
-						fs.writeFile('content/background.less', 'body{background-image: url(/images/' + this.background + ');}')
+						fs.writeFile('content/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.path, file._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}')
 					}
 				}
 				else if(file._ext == 'less' || file._ext == 'css'){
@@ -137,8 +143,16 @@ function Site(name, path){
           console.log('ico file encountered: ' + file._base);
         }
         else if(file._ext == 'json'){
-          if(file._base == 'authentication'){
-            this.authInfo = JSON.parse(file._content);
+          try{
+            var object = JSON.parse(file._content);
+          }
+          catch(e){
+            console.log(file._base, e);
+          }
+					switch(file._base){
+            case 'authentication':  this.authInfo = object; break;
+            case 'imageSizes': this.defaultImageSize = object; break;
+            case 'order': replaceProps(this.orderPattern, object); break;
           }
         }
       }
@@ -154,26 +168,12 @@ function Site(name, path){
 		this.sort();
   };
 	this.sort = function(){
-		for(var type in this.order){
-			if(this.order[type].split('date').length > 1){
-				var dates = [];
-				for(var index in this[type]){
-					dates.push({name: index, date: this[type][index].date});
-				}
-				dates.sort(function(a, b){ return b.date > a.date ? -1 : 1 });
-				if(this.order[type].split('reverse').length > 1){
-					dates.reverse();
-				}
-				for(var index in dates){
-					this[type][dates[index].name].order = index;
-				}
-				this[type].sort(function(a,b){ return a.order > b.order ? -1 : 1 });
-			}
-		}
+		multiSort(this);
 	}
 	this.remove = function(name){
 		if(name.split('.').length == 1) {
 			this.sections.removeOne({foldername: name});
+      this.imageCache.clear(name);
 		}
 		else{
 			var split = name.split('.'),
@@ -221,6 +221,7 @@ function Site(name, path){
 		}
 	}
   this.afterUpdate = function(path){
+    
     //reload liveViewers
     if(this.liveViewers.length) for(var i in this.liveViewers) this.liveViewers[i].socket.emit('reload', {path: path});
   }
@@ -231,7 +232,13 @@ function Section(name, site, data){
 	this.foldername = name;
   this.title = name;
 	Object.defineProperty(this, 'site', {value: site});
-	this.order = {items: 'date', images: 'date', stylesheets: 'date', javascripts: 'date'};
+	this.orderPattern = {
+    items: {unassigned: 'date', assigned: []},
+    images: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []},
+    extraContent: {unassigned: 'date', assigned: []}
+  };
   this.items = [];
   this.images = [];
   this.extraContent = [];
@@ -250,21 +257,21 @@ function Section(name, site, data){
         console.log('file ignored: ' + item._base);
         continue;
       }
-      if(item._type == 'directory') this.items.push(new Item(itemname, this, item));
+      if(item._type == 'directory'){
+        this.items.push(new Item(itemname, this, item));
+      }
       else{
         if(item._ext in imageTypes){
           if(item._base.toLowerCase() == 'background') {
-            //continue;
-            console.log(this.site.path + this.foldername + '/background.less');
-            //if(fs.existsSync('content/' + this.foldername + '/background.css')) fs.unlinkSync('content/' + this.foldername + 'style.css');
+            
 						fs.writeFileSync(
               this.site.path + this.foldername + '/background.less',
-              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:contain;}'
+              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item._path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}'
             )
 					}
           else{
-            this.images.removeOne({name: item._base});
-            this.images.push(new Image(item, this.site.path));
+            if(this.images.removeOne({name: item._base})) this.site.imageCache.clear( this.foldername + '/' + item._name);
+            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize));
           }
         }
 				else if(item._ext == 'less' || item._ext == 'css'){
@@ -292,31 +299,21 @@ function Section(name, site, data){
           }
         }
         else if(item._ext == 'json'){
-          var json = JSON.parse(item._content);
+          try{ var json = JSON.parse(item._content); }
+          catch(e){
+            console.log(e, item._base);
+            return;
+          }
           if(item._base == 'form') this.form = new Form(json);
+          if(item._base == 'order') replaceProps(this.orderPattern, json);
         }
       }
     }
 		this.sort();
   };
 	this.sort = function(){
-		for(var type in this.order){
-			if(this.order[type].split('date').length > 1){
-				var dates = [];
-				for(var index in this[type]){
-					dates.push({name: index, date: this[type][index].date});
-				}
-				dates.sort(function(a, b){ return b.date > a.date ? -1 : 1 });
-				if(this.order[type].split('reverse').length > 1){
-					dates.reverse();
-				}
-				for(var index in dates){
-					this[type][dates[index].name].order = index;
-				}
-				this[type].sort(function(a,b){ return a.order > b.order ? -1 : 1 });
-			}
-		}
-	}
+		multiSort(this);
+	};
 	this.remove = function(pathArray){
 		if(pathArray.length == 1){
 			var name = pathArray[0],
@@ -336,7 +333,7 @@ function Section(name, site, data){
             }
           }
           else {
-            this.images.removeOne({name: filename});
+            if(this.images.removeOne({name: filename})) this.site.imageCache.clear( this.foldername + '/' + filename);
           }
         }
         else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
@@ -346,6 +343,7 @@ function Section(name, site, data){
       }
       else{ //is a directory
         this.items.removeOne({foldername: name});
+        this.site.imageCache.clear(this.foldername + '/' + name);
       }
 		}
 		else{
@@ -375,6 +373,16 @@ function Item(name, section, data){
     extraContent: [],
     allowResponses: false
   };
+  this.orderPattern = {
+    extraContent: {unassigned: 'date', assigned: []},
+    images: {unassigned: 'date', assigned: []},
+    stylesheets: {unassigned: 'date', assigned: []},
+    javascripts: {unassigned: 'date', assigned: []}
+  };
+  this.title = name;
+  this.images = [];
+  this.extraContent = [];
+  this.allowResponses = false;
   this.name = name;
 	this.foldername = name;
 	this.stylesheets = [];
@@ -394,36 +402,45 @@ function Item(name, section, data){
       }
       if(part._type == 'directory'){
         if(part._base.toLowerCase() == 'responses'){
-          this.contents.allowResponses = true;
-          this.contents.responses = [];
+          this.allowResponses = true;
+          this.responses = [];
         }
       }
       else{
         if(part._ext == 'txt'){
-          addTextFile.call(this.contents, part);
+          addTextFile.call(this, part);
         }
-        else{
-          if(part._ext in imageTypes){
-            this.contents.images.push(new Image(part, this.section.site.path));
+        else if(part._ext in imageTypes){
+          //if(this.contents.images.indexOf()) TODO image cache clearing when existing. and prevent doubles
+          if(this.images.removeOne({name: part._base})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
+          this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
+        }
+        else if(part._ext == 'less' || part._ext == 'css'){
+          this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
+          if(part._ext == 'less'){
+            lessparser.parse(part._content, function(error, tree){
+              if(error) return console.log(error);
+              var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
+              if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
+              fs.writeFileSync(fullpath, tree.toCSS());
+            });
           }
-          else if(part._ext == 'less' || part._ext == 'css'){
-            this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
-            if(part._ext == 'less'){
-              lessparser.parse(part._content, function(error, tree){
-                if(error) return console.log(error);
-                var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
-                if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
-                fs.writeFileSync(fullpath, tree.toCSS());
-              });
-            }
+        }
+        else if(part._ext == 'js'){
+          this.javascripts.removeOne({name: part._base});
+          this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
+        }
+        else if(part._ext == 'json'){
+          try{ var json = JSON.parse(part._content); }
+          catch(e){
+            console.log(e, part._base);
+            return;
           }
-          else if(part._ext == 'js'){
-            this.javascripts.removeOne({name: part._base});
-            this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
-          }
+          if(part._base == 'order') replaceProps(this.orderPattern, json);
         }
       }
     }
+    multiSort(this);
   };
 	this.remove = function(name){
 		if(typeof name == 'object' && name.length == 1) name = name[0];
@@ -432,10 +449,10 @@ function Item(name, section, data){
 				extension = split[1];
     if(extension){ //is a file
       if(extension == 'txt') {
-        removeTextFile.call(this.contents, filename);
+        removeTextFile.call(this, filename);
       }
       else if(extension in imageTypes) {
-        this.contents.images.removeOne({name: filename});
+        if(this.images.removeOne({name: filename})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + filename);
       }
       else if(extension == 'css' || extension == 'less'){
         this.stylesheets.removeOne({name: filename});
@@ -461,11 +478,22 @@ function createMenuFromStructure(structure){
   return menu
 }
 
-function Image(fileRef, basepath){
+function replaceProps(a, b){
+  for(var i in a){
+    if(b[i]) a[i] = b[i];
+  }
+}
+
+function Image(fileRef, basepath, size){
+  var path = fileRef._path.split('/');
+  path.splice(path.length - 1, 1, fileRef._base);
   this.name = fileRef._base;
 	this.alt = fileRef._base;
-	this.src = '/images/' + stripPath(basepath, fileRef._path);
+	this.base = '/images/' + stripPath(basepath, path.join('/'));
+  this.ext = fileRef._ext;
 	this.date = fileRef.date;
+  this.width = size.width;
+  this.height = size.height;
 }
 
 function addTextFile(file){
@@ -486,6 +514,41 @@ function removeTextFile(filename){
 
 function stripPath(base, full){
 	return full.split(base)[1];
+}
+
+function multiSort(parent){
+  for(var type in parent.orderPattern){
+    
+    var set = parent.orderPattern[type],
+        listedItems = set.assigned,
+        existingItems = parent[type],
+        n = 0;
+    for(var item in listedItems){
+      var name = listedItems[item],
+          item = existingItems.findOne({name: name});
+      if(item){
+        item.order = n;
+        n++;
+      }
+    }
+    
+    if(set.unassigned && set.unassigned.split('date').length > 1){
+      var dates = [];
+      for(var index in existingItems){
+        if(set.assigned.indexOf(existingItems[index].name) == -1){
+          dates.push({name: index, date: existingItems[index].date});
+        }
+      }
+      dates.sort(function(a, b){ return b.date - a.date; });
+      if(set.unassigned.split('reverse').length > 1){
+        dates.reverse();
+      }
+      for(var index in dates){
+        existingItems[dates[index].name].order = +index + n;
+      }
+    }
+    existingItems.sort(function(a,b){ return a.order - b.order });
+  }
 }
 
 function Form(json){
