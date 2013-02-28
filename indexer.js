@@ -8,6 +8,8 @@ var foldermap = require("foldermap"),
 		lessparser = less.Parser({ optimization: 1 }),
 		config = require("./config.json"),
     ImageCache = require('./imageCacher.js').ImageCache,
+    fileUtils = require('./fileUtils.js'),
+    validatePath = fileUtils.validatePath,
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
@@ -86,7 +88,8 @@ function Site(name, path){
 }
 (function(){
   this.addData = function(diskdata){
-		var noChildren = true;
+		var site = this,
+        noChildren = true;
     for(var name in diskdata){
       var file = diskdata[name];
       if(file._base.indexOf('conflicted copy') !== -1){
@@ -158,8 +161,10 @@ function Site(name, path){
       }
 			noChildren = false;
     }
-		if(!this.background) fs.writeFileSync('public/css/background.less', '');
-		if(!this.header.logo) fs.writeFileSync('public/css/logo.less', '');
+    validatePath('public', 'css', function(){
+      if(!site.background) fs.writeFileSync('public/css/background.less', '');
+		  if(!site.header.logo) fs.writeFileSync('public/css/logo.less', '');    
+    });
 		if(noChildren) setTimeout(function(){
 			var path = config.contentpath + config.homesection;
 			console.log('creating ' + path);
