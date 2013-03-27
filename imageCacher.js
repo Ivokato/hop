@@ -101,6 +101,7 @@ function ImageCache(maxSize){
       var entry = this.entries[filename];
       
       if(entry.sizes[dimensionsConcatted]){
+        console.log('size match..');
         entry.sizes[dimensionsConcatted].time = new Date().getTime();
         fs.readFile('imagecache/' + src, function(error, img){
           if(error) callback(error);

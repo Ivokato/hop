@@ -1,21 +1,21 @@
 section
-  if info.title
-    h1!= info.title
-  if info.introduction
-    p.heavy!= info.introduction
-  if info.body
-    p!= info.body
-  if info.images
-    each image, imagename in info.images
-      img(src=image.base + '-' + image.width + 'x' + image.height + '.' + image.ext, alt=image.alt, title=image.alt)
-  if info.footer
-    p!= info.footer
-  if(info.extraContent)
-    each extraItem, i in info.extraContent
-      div(id=extraItem.name)!= extraItem.content
-  if info.items
-    each item, i in info.items
-      include itemOverview
-  if info.form
-    if info.form.fields
-      include form
+	if info.title
+		h1!= info.title
+	if info.introduction
+		p.heavy!= info.introduction
+	if info.body
+		p!= info.body
+	if info.images
+		each image, imagename in info.images
+			span(data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.base + '.' + image.ext, data-alt=image.alt, data-title=image.alt)
+	if info.footer
+		p!= info.footer
+	if(info.extraContent)
+		each extraItem, i in info.extraContent
+			div(id=extraItem.name)!= extraItem.content
+	if info.items
+		each item, i in info.items
+			include itemOverview
+	if info.form
+		if info.form.fields
+			include form

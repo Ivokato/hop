@@ -13,7 +13,7 @@ article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
     p!= item.footer
   if item.images
     each image, imagename in item.images
-      img(src=image.base + '-' + image.width + 'x' + image.height + '.' + image.ext, alt=image.alt, title=image.alt)
+      span(data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.base + '.' + image.ext, data-alt=image.alt, data-title=image.title)
   if item.extraContent
     each extraItem, index in item.extraContent
       div(id=extraItem.name)!= extraItem.content

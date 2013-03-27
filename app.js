@@ -153,6 +153,7 @@ app.post('/login', function(req, res){
   if(!(new Date().getTime() - lastLoginAttempt < 1000)){
     if(req.body.name == site.authInfo.name && req.body.password == site.authInfo.password){
       req.session.loggedOn = true;
+      console.log('ref', req.referrer);
       res.redirect('/');
     }
     else{
