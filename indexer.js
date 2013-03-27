@@ -1,7 +1,6 @@
 var foldermap = require("foldermap"),
     watch = require("watchr").watch,
     fmap = foldermap.map,
-    fmapSync = foldermap.mapSync,
     fs = require("fs"),
     imgMagick = require("imagemagick"),
 		less = require("less"),
@@ -62,7 +61,7 @@ function Site(name, path){
     redefine(site, eventName, filePath);
 	}});
 	
-  this.diskdata = enrichDiskData(fmapSync({path: path, recursive: true}));
+  this.diskdata = enrichDiskData(fmap({path: path, recursive: true}));
   this.sections = [];
   this.path = path;
 	this.orderPattern = {
