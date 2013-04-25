@@ -14,7 +14,7 @@ article(id=item.foldername, class='overview')
 			span(data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src=item.images[0].base + '.' + item.images[0].ext, data-alt=item.images[0].alt, data-title=item.images[0].alt)
 		else
 			each image, imagename in item.images
-				spann(data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src=item.images[0].base + '.' + item.images[0].ext, data-alt=item.images[0].alt, data-title=item.images[0].alt)
+				span(data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.base + '.' + image.ext, data-alt=image.alt, data-title=image.alt)
 	if item.extraContent
 		each extraItem, index in item.extraContent
 			div(id=extraItem.name)!= extraItem.content
