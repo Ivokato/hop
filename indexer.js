@@ -121,10 +121,14 @@ function Site(name, path){
 					this.stylesheets.removeOne({name: file._base});
 					this.stylesheets.push({src: '/stylesheets/' + file._base + '.css', name: file._base, date: file.date });
 					if(file._ext == 'less'){
-						lessparser.parse(file._content, function(error, tree){
-							if(error) return console.log(error);
-							if(fs.existsSync('content/' + file._base + '.css')) fs.unlinkSync('content/' + file._base + '.css');
-							fs.writeFileSync('content/' + file._base + '.css', tree.toCSS());
+						file.__read(function(err, content){
+							if(!err){
+								lessparser.parse(content, function(error, tree){
+									if(error) return console.log(error);
+									if(fs.existsSync('content/' + file._base + '.css')) fs.unlinkSync('content/' + file._base + '.css');
+									fs.writeFileSync('content/' + file._base + '.css', tree.toCSS());
+								});
+							}
 						});
 					}
 				}
@@ -134,34 +138,35 @@ function Site(name, path){
 				}
 				else if(file._ext == 'txt'){
           if(file._base in basicTextNames) {
-						var content = file._content.split("\r\n").join('<br>');
-						if(file._base == 'title' || file._base == 'subtitle') this.header[file._base] = content;
-						else this[file._base] = content;
-					}
-					else if(file._base == 'order'){
-						if(file._content.split('date').length > 1){
-              
-						}
+						file.__read(function(err, content){
+							content = content.split("\r\n").join('<br>');
+							if(file._base == 'title' || file._base == 'subtitle') site.header[file._base] = content;
+							else site[file._base] = content;
+						});
 					}
           else{
-            this.extraContent.push({name: file._base, content: file._content});
+						file.__read(function(err, content){
+							site.extraContent.push({name: file._base, content: content});
+						});
           }
 				}
         else if(file._ext == 'ico'){
           console.log('ico file encountered: ' + file._base);
         }
         else if(file._ext == 'json'){
-          try{
-            var object = JSON.parse(file._content);
-          }
-          catch(e){
-            console.log(file._base, e);
-          }
-					switch(file._base){
-            case 'authentication':  this.authInfo = object; break;
-            case 'imageSizes': this.defaultImageSize = object; break;
-            case 'order': replaceProps(this.orderPattern, object); break;
-          }
+					file.__read(function(err, content){
+						try{
+							var object = JSON.parse(content);
+						}
+						catch(e){
+							console.log(file._base, e);
+						}
+						switch(file._base){
+							case 'authentication':  site.authInfo = object; break;
+							case 'imageSizes': site.defaultImageSize = object; break;
+							case 'order': replaceProps(site.orderPattern, object); break;
+						}
+				  });
         }
       }
 			noChildren = false;
@@ -288,11 +293,13 @@ function Section(name, site, data){
           this.stylesheets.removeOne({name: item._base});
 					this.stylesheets.push({name: item._base, src: '/stylesheets/' + this.name + '/' + item._base + '.css', date: item.date });
 					if(item._ext == 'less'){
-						lessparser.parse(item._content, function(error, tree){
-							if(error) return console.log(error);
-							var fullpath = 'content/' + section.foldername + '/' + item._base + '.css';
-							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
-							fs.writeFileSync(fullpath, tree.toCSS());
+						item.__read(function(err, content){
+							lessparser.parse(content, function(error, tree){
+								if(error) return console.log(error);
+								var fullpath = 'content/' + section.foldername + '/' + item._base + '.css';
+								if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
+								fs.writeFileSync(fullpath, tree.toCSS());
+							});
 						});
 					}
 				}
@@ -301,21 +308,25 @@ function Section(name, site, data){
 					this.javascripts.push({name: item._base, src: '/javascripts/' + this.name + '/' + item._base + '.js', date: item.date });
 				}
 				else if(item._ext == 'txt'){
-					var content = item._content.split('\r\n').join('<br>');
-          if(item._base in basicTextNames) this[item._base] = content;
-          else{
-            this.extraContent.removeOne({name: item._base});
-            this.extraContent.push({name: item._base, content: content});
-          }
+					item.__read(function(err, content){
+						content = content.split('\r\n').join('<br>');
+						if(item._base in basicTextNames) section[item._base] = content;
+						else{
+							section.extraContent.removeOne({name: item._base});
+							section.extraContent.push({name: item._base, content: content});
+						}
+					});
         }
         else if(item._ext == 'json'){
-          try{ var json = JSON.parse(item._content); }
-          catch(e){
-            console.log(e, item._base);
-            return;
-          }
-          if(item._base == 'form') this.form = new Form(json);
-          if(item._base == 'order') replaceProps(this.orderPattern, json);
+					item.__read(function(err, content){
+						try{ var json = JSON.parse(content); }
+						catch(e){
+							console.log(e, item._base);
+							return;
+						}
+						if(item._base == 'form') section.form = new Form(json);
+						if(item._base == 'order') replaceProps(section.orderPattern, json);
+					});
         }
       }
     }
@@ -429,12 +440,14 @@ function Item(name, section, data){
         else if(part._ext == 'less' || part._ext == 'css'){
           this.stylesheets.push({name: part._base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.css', date: part.date });
           if(part._ext == 'less'){
-            lessparser.parse(part._content, function(error, tree){
-              if(error) return console.log(error);
-              var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
-              if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
-              fs.writeFileSync(fullpath, tree.toCSS());
-            });
+						part.__read(function(err, content){
+							lessparser.parse(content, function(error, tree){
+								if(error) return console.log(error);
+								var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part._base + '.css';
+								if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
+								fs.writeFileSync(fullpath, tree.toCSS());
+							});
+						});
           }
         }
         else if(part._ext == 'js'){
@@ -442,12 +455,14 @@ function Item(name, section, data){
           this.javascripts.push({name: part._base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part._base + '.js', date: part.date });
         }
         else if(part._ext == 'json'){
-          try{ var json = JSON.parse(part._content); }
-          catch(e){
-            console.log(e, part._base);
-            return;
-          }
-          if(part._base == 'order') replaceProps(this.orderPattern, json);
+					part.__read(function(err, content){
+						try{ var json = JSON.parse(content); }
+						catch(e){
+							console.log(e, part._base);
+							return;
+						}
+						if(part._base == 'order') replaceProps(item.orderPattern, json);
+					});
         }
       }
     }
@@ -508,12 +523,15 @@ function Image(fileRef, basepath, size){
 }
 
 function addTextFile(file){
-	var content = file._content.split('\r\n').join('<br>');
-  if(file._base in basicTextNames) this[file._base] = content;
-  else{
-    this.extraContent.removeOne({name: file._base});
-    this.extraContent.push({name: file._base, content: content});
-  }
+	var subject = this;
+	file.__read(function(err, content){
+		content = content.split('\r\n').join('<br>');
+		if(file._base in basicTextNames) subject[file._base] = content;
+		else{
+			subject.extraContent.removeOne({name: file._base});
+			subject.extraContent.push({name: file._base, content: content});
+		}
+	});
   return this;
 }
 
