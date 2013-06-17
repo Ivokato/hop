@@ -53,7 +53,7 @@ function enrichDiskData(diskdata){
 	}
 	return diskdata;
 }
-
+0
 function Site(name, path){
 	var site = this;
 	watch({path: path, listener: function(eventName, filePath, currentStat, previousStat){
@@ -61,7 +61,13 @@ function Site(name, path){
     redefine(site, eventName, filePath);
 	}});
 	
-  this.diskdata = enrichDiskData(fmap({path: path, recursive: true}));
+  fmap({path: path, recursive: true}, function(err, map){
+		if(!err) site.diskdata = enrichDiskData(map);
+		if(countChildren(site.diskdata)) {
+			site.addData(site.diskdata);
+			site.header.menu = createMenuFromStructure(site);
+		}
+	});
   this.sections = [];
   this.path = path;
 	this.orderPattern = {
@@ -415,8 +421,9 @@ function Item(name, section, data){
           addTextFile.call(this, part);
         }
         else if(part._ext in imageTypes){
-          //if(this.contents.images.indexOf()) TODO image cache clearing when existing. and prevent doubles
-          if(this.images.removeOne({name: part._base})) this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
+          if(this.images.removeOne({name: part._base})) {
+						this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part._base);
+					}
           this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
         }
         else if(part._ext == 'less' || part._ext == 'css'){
