@@ -102,7 +102,7 @@ function Site(name, path){
         continue;
       }
       if(file._type == 'directory'){
-        if(!(file._base in reservedFolderNames)) this.sections.push(new Section(name, this, file));
+        if(!(file._base in reservedFolderNames)) this.sections.push(new Section(file._base, this, file));
       }
       else{
         if(file._ext in imageTypes){
@@ -273,7 +273,7 @@ function Section(name, site, data){
         continue;
       }
       if(item._type == 'directory'){
-        this.items.push(new Item(itemname, this, item));
+        this.items.push(new Item(item._base, this, item));
       }
       else{
         if(item._ext in imageTypes){
