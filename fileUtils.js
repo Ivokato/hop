@@ -1,4 +1,131 @@
-var fs = require("fs");
+var fs = require("fs"),
+    utfTypes = ['css','less','js','json','xml','txt'];
+
+function getFile(path, item, itemName, callback){
+	
+}
+
+function getFolderContents(folder, callback, parent, resolve){
+	if(!parent) parent = {};
+
+	fs.readdir(folder, function(err, folderContents){
+		var items = {},
+		    itemName, i,
+		    total = 0, completed = 0,
+				path = folder + '/';
+
+	  if(err) callback(err);
+    else{
+      for(i in folderContents){
+				total++;
+				(function(i, itemName){
+					var item = {};
+          items[itemName] = item;
+          
+					parent.children = items;
+
+	  			fs.stat(path + itemName, function(err, stats){
+		  			if(err) callback(err);
+			  		else{
+              item.modified = stats.mtime;
+							item.size = stats.size;
+							item.name = itemName;
+
+				  		if(stats.isDirectory()){
+                item.isDirectory = true;
+                item.base = itemName;
+								
+								getFolderContents(path + itemName, callback, item, function(){
+									completed++;
+									if(completed == total) (resolve || callback)(null, items);
+								});
+                
+					  	}
+						  else{
+								fs.realpath(path + itemName, function(err, filePath){
+									if(err) callback(err);
+									else{
+										item.path = filePath;
+										
+										if(itemName[0] == '.') item.hidden = true;
+										
+										var split = itemName.split('.');
+										
+										item.extension = item.hidden ?
+											split.length > 2 ? split.pop() : '' :
+											split.length > 1 ? split.pop() : '';
+										
+										item.base = split.join('.');
+										
+										if(utfTypes.indexOf(item.extension) !== -1){
+											fs.readFile(path + itemName, 'utf8', function(err, contents){
+												if(err) callback(err);
+												else{
+													item.contents = contents;
+													completed++;
+													if(completed == total) (resolve || callback)(null, items);
+												}
+											});
+										}
+										else{
+											completed++;
+											if(completed == total) (resolve || callback)(null, items);
+										}
+									}
+								});
+						  }
+					  }
+				  });
+				})(i, folderContents[i]);
+			}
+			if(total == 0) (resolve || callback)(null, items);
+		}
+	});
+}
+
+function getFile(path, callback){
+	fs.stat(path, function(err, stats){
+		if(err) callback(err);
+		else{
+			var file = {},
+					itemName = path.split('/').pop();
+			
+			file.modified = stats.mtime;
+			file.size = stats.size;
+			file.name = itemName;
+			
+			fs.realpath(path, function(err, filePath){
+				if(err) callback(err);
+				else{
+					file.path = filePath;
+					
+					if(itemName[0] == '.') file.hidden = true;
+					
+					var split = itemName.split('.');
+					
+					file.extension = file.hidden ?
+						split.length > 2 ? split.pop() : '' :
+						split.length > 1 ? split.pop() : '';
+					
+					file.base = split.join('.');
+					
+					if(utfTypes.indexOf(file.extension) !== -1){
+						fs.readFile(path, 'utf8', function(err, contents){
+							if(err) callback(err);
+							else{
+								file.contents = contents;
+								callback(null, file);
+							}
+						});
+					}
+					else{
+						callback(null, file);
+					}
+				}
+			});
+		}
+	});
+}
 
 function validatePath(basepath, path, callback){
   var array = path.split('/'),
@@ -56,5 +183,7 @@ function removeNonEmptyFolder(path, callback){
   });
 }
 
+exports.getFile = getFile;
 exports.validatePath = validatePath;
 exports.removeNonEmptyFolder = removeNonEmptyFolder;
+exports.getFolderContents = getFolderContents;

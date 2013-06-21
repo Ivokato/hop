@@ -13,6 +13,9 @@ section
 	if(info.extraContent)
 		each extraItem, i in info.extraContent
 			div(id=extraItem.name)!= extraItem.content
+	if(info.attachments)
+		each attachment, i in info.attachments
+			include attachment
 	if info.items
 		each item, i in info.items
 			include itemOverview

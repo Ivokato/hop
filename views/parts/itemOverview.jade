@@ -18,6 +18,9 @@ article(id=item.foldername, class='overview')
 	if item.extraContent
 		each extraItem, index in item.extraContent
 			div(id=extraItem.name)!= extraItem.content
+	if item.attachments
+		each attachment, index in item.attachments
+			include attachment
 	if item.allowResponses
 		.responses
 			if item.responses

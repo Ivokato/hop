@@ -10,7 +10,6 @@
     "jade": "*",
 		"less": "*",
     "less-middleware": "*",
-		"foldermap": "*",
 		"watchr": "*",
 		"socket.io": "*",
 		"gzippo": "*",

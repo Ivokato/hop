@@ -100,6 +100,10 @@ app.get(/javascripts\/(.+)/, function(req, res){
 	});
 });
 
+app.get(/files\/(.+)/, function(req, res){
+	var filePath = req.params[0];
+	res.sendfile('content/' + filePath);
+});
 
 app.get(/stylesheets\/(.+)/, function(req, res){
 	var cssPath = req.params[0],

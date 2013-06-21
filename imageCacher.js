@@ -51,31 +51,35 @@ function ImageCache(maxSize){
       if(i.indexOf(path) !== -1){
         var entry = this.entries[i];
         for(var s in entry.sizes){
-          var size = entry.sizes[s],
-              splitName = i.split('.'),
+          var splitName = i.split('.'),
               extension = splitName.pop(),
               filename = splitName.join('.') + '-' + s + '.' + extension;
           fs.unlink('imagecache/' + filename);
-          this.currentSize -= size.size;
+          this.currentSize -= entry.sizes[s];
         }
         delete this.entries[i];
+        var split = path.split('/');
+        split.pop();
+        path = split.join('/');
         fs.stat('imagecache/' + path, function(error, stats){
-          if(error) console.log('error: ' + error + ', path: ' + path);
-          if(stats.isDirectory()){
-            fs.readdir('imagecache/' + path, function(error, files){
-              if(!files.length) fs.rmdir('imagecache/' + path, function(){
-                
-                //check if parent folder is empty too
-                var split = path.split('/')
-                if(split.length > 1){
-                  split.pop();
-                  var join = split.join('/');
-                  fs.readdir('imagecache/' + join, function(error, files){
-                    if(!files.length) fs.rmdir('imagecache/' + join);
-                  });
-                }
+          if(error) console.log('error: ' + error + ', path: imagecache/' + path);
+          else{
+            if(stats.isDirectory()){
+              fs.readdir('imagecache/' + path, function(error, files){
+                if(!files.length) fs.rmdir('imagecache/' + path, function(){
+                  
+                  //check if parent folder is empty too
+                  var split = path.split('/')
+                  if(split.length > 1){
+                    split.pop();
+                    var join = split.join('/');
+                    fs.readdir('imagecache/' + join, function(error, files){
+                      if(!files.length) fs.rmdir('imagecache/' + join);
+                    });
+                  }
+                });
               });
-            });
+            }
           }
         });
       }
