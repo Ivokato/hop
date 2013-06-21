@@ -281,7 +281,7 @@ function Section(name, site, data){
           if(item.base.toLowerCase() == 'background') {
             
 						fs.writeFileSync(
-              this.site.path + this.foldername + '/background.less',
+              this.site.path + '/' + this.foldername + '/background.less',
               'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item.path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}'
             )
 					}
@@ -348,8 +348,8 @@ function Section(name, site, data){
         }
         else if(extension in imageTypes){
           if(filename == 'background'){
-            if(fs.existsSync(this.site.path + this.foldername + '/background.less')){
-              fs.unlinkSync(this.site.path + this.foldername + 'background.less');
+            if(fs.existsSync(this.site.path + '/' + this.foldername + '/background.less')){
+              fs.unlinkSync(this.site.path + + '/' + this.foldername + 'background.less');
             }
           }
           else {
@@ -444,7 +444,7 @@ function Item(name, section, data){
         else if(part.extension == 'less' || part.extension == 'css'){
           this.stylesheets.push({name: part.base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.css', date: part.modified });
           if(part.extension == 'less'){
-						lessparser.parse(file.contents, function(error, tree){
+						lessparser.parse(part.contents, function(error, tree){
 							if(error) return console.log(error);
 							var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part.base + '.css';
 							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
@@ -457,7 +457,7 @@ function Item(name, section, data){
           this.javascripts.push({name: part.base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.js', date: part.modified });
         }
         else if(part.extension == 'json'){
-					try{ var json = JSON.parse(file.contents); }
+					try{ var json = JSON.parse(part.contents); }
 					catch(e){
 						console.log(e, part.base);
 						return;

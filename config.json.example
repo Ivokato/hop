@@ -2,7 +2,7 @@
   "sitename": "Untitled",
   "port": 1000,
   "homesection": "Nieuws",
-  "contentpath": "content/",
+  "contentpath": "content",
   "imageCacheLimit": 100,
 	"mailgunSettings": {
 		"domain": "user.mailgun.org",
