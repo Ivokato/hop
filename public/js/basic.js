@@ -11,17 +11,13 @@
         var $this = $(this),
             trueSrc = $this.attr('data-src');
         
-        var $img = $('<img>', {
-          src: lazyloader.makeSizedSrc(trueSrc, $this.width(), $this.height()),
-          'data-truesrc': trueSrc
-        });
-				
-				$img.on('click.lightbox', function(){
+				$this
+				.attr('src', lazyloader.makeSizedSrc(trueSrc, $this.width(), $this.height()))
+				.on('click.lightbox', function(){
 					$(this).lightbox();
 				});
 				
-        $this.after($img);
-        $this.remove();
+        $this.removeAttr('style');
       });
     };
 		this.makeSizedSrc = function(src, width, height){
