@@ -466,7 +466,7 @@ function Item(name, section, data){
         }
 				else{
 					this.attachments.removeOne({name: thing});
-					this.attachments.push({name: thing, size: part.size, src: '/files/' + this.section.foldername + '/' + this.foldername + '/' + thing, date: part.modified });
+					this.attachments.push({name: thing, extension: part.extension, size: part.size, src: '/files/' + this.section.foldername + '/' + this.foldername + '/' + thing, date: part.modified });
 				}
       }
     }
