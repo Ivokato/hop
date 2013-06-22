@@ -4,10 +4,10 @@ if header
       a#logo(href="/")
         img(src=header.logo)
     if header.title
-      h1= header.title
+      h1#mainTitle= header.title
     if header.subtitle
       span.subtitle= header.subtitle
     if header.menu
       nav
         each menuItem in header.menu
-          a(href="/" + menuItem)= menuItem
+          a(href="/" + menuItem, class=parentSection ? parentSection == menuItem ? "active" : "" : "")= menuItem

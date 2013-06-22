@@ -131,9 +131,15 @@ app.get('/:section', function(req, res){
 			stylesheets = stylesheets.merge(item.stylesheets);
 			javascripts = javascripts.merge(item.javascripts);
 		}
-    if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
+    //if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
     
-		res.render('section', { info: section, header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: req.params.section } );
+		res.render('section', {
+			info: section,
+			header: site.header,
+			stylesheets: stylesheets,
+			javascripts: javascripts,
+			parentSection: req.params.section
+		} );
 	}
 	else req.next();
 });
@@ -144,9 +150,16 @@ app.get('/:section/:item', function(req, res){
         item = section.items.findOne({foldername: req.params.item}),
 				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets).merge(item.stylesheets),
 				javascripts = site.javascripts.deepclone().merge(section.javascripts).merge(item.javascripts);
-    if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
     
-		res.render('item', { info: {item: item} , header: site.header, stylesheets: stylesheets, javascripts: javascripts, parentSection: false } );
+		//if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
+    
+		res.render('item', {
+			info: {item: item},
+			header: site.header,
+			stylesheets: stylesheets,
+			javascripts: javascripts,
+			parentSection: false
+		});
 	}
 	else req.next();
 });

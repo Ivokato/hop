@@ -13,11 +13,14 @@
         
 				$this
 				.attr('src', lazyloader.makeSizedSrc(trueSrc, $this.width(), $this.height()))
-				.on('click.lightbox', function(){
-					$(this).lightbox();
+				.on({
+					'click.lightbox': function(){
+						$(this).lightbox();
+					},
+					load: function(){
+						$this.removeAttr('style');
+					}
 				});
-				
-        $this.removeAttr('style');
       });
     };
 		this.makeSizedSrc = function(src, width, height){

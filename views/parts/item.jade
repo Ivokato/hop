@@ -27,7 +27,7 @@ article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
           .response
             h6 by {response.author}
             p= response.text
-      form(method="post", action="/" + info.title + "/" + item.foldername + "/respond")
+      form(method="post", action="/" + item.section.foldername + "/" + item.foldername + "/respond")
         input#responseAuthor(type="text")
         textarea#responseText
         input#sendResponse(type="submit", value="place comment")
