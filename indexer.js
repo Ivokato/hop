@@ -44,22 +44,11 @@ function redefine(site, eventName, filePath){
 						else{
 							var fileContainer = {};
 							fileContainer[file.name] = file;
-							console.log(filePath, pathArray, fileContainer[file.name]);
 							site.update(pathArray, fileContainer);
 						}
 					});
 				}
 			});
-			if(0) fmap({path: filePath, recursive: true}, function(error, file){
-			  if(error) console.log('error: ', error);
-			  else{
-				  var filename = file.base,
-						  fileContainer = {};
-				  if(file.isDirectory) filename += '.' + file.extension;
-				  fileContainer[filename] = enrichDiskData(file);
-				  site.update(pathArray, fileContainer);
-			  }
-		  });
 		}
 	}
 
@@ -109,7 +98,6 @@ function Site(name, path){
         continue;
       }
       if(file.isDirectory){
-				console.log('directory: ', file);
         if(!(file.base in reservedFolderNames)) this.sections.push(new Section(file.base, this, file));
       }
       else{
@@ -129,7 +117,6 @@ function Site(name, path){
 					this.stylesheets.removeOne({name: file.base});
 					this.stylesheets.push({src: '/stylesheets/' + file.base + '.css', name: file.base, date: file.modified });
 					if(file.extension == 'less'){
-						console.log(file, 'tang!!!!!');
 						lessparser.parse(file.contents, function(error, tree){
 							if(error) return console.log(error);
 							if(fs.existsSync('content/' + file.base + '.css')) fs.unlinkSync('content/' + file.base + '.css');
@@ -414,6 +401,9 @@ function Item(name, section, data){
 	this.attachments = [];
   this.extraContent = [];
 	this.modified = data.modified;
+	
+	this.hidden = data.hidden;
+	
   if(data && countChildren(data)) this.addData(data.children);
 }
 (function(){

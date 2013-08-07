@@ -44,6 +44,7 @@ app.configure(function(){
   app.use(express.methodOverride());
   app.use(express.cookieParser(config.secret || 'your secret here'));
   app.use(express.session());
+	app.use(function(req, res, next){ res.locals.loggedOn = req.session.loggedOn; next(); });
   app.use(app.router);
   app.use(require('less-middleware')({ src: __dirname + '/public' }));
   //app.use(express.static(path.join(__dirname, 'public')));
@@ -132,7 +133,7 @@ app.get('/:section', function(req, res){
 			javascripts = javascripts.merge(item.javascripts);
 		}
     //if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
-    
+		
 		res.render('section', {
 			info: section,
 			header: site.header,
@@ -153,6 +154,8 @@ app.get('/:section/:item', function(req, res){
     
 		//if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
     
+		if(item.hidden && !req.session.loggedOn) res.redirect('/' + req.params.section);
+		
 		res.render('item', {
 			info: {item: item},
 			header: site.header,

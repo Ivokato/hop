@@ -19,8 +19,11 @@ function getFolderContents(folder, callback, parent, resolve){
       for(i in folderContents){
 				total++;
 				(function(i, itemName){
-					var item = {};
-          items[itemName] = item;
+					var item = {hidden: itemName[0] == '.'},
+							proxyName = item.hidden ? itemName.substr(1) : itemName;
+					
+					item.name = proxyName;
+          items[proxyName] = item;
           
 					parent.children = items;
 
@@ -29,11 +32,10 @@ function getFolderContents(folder, callback, parent, resolve){
 			  		else{
               item.modified = stats.mtime;
 							item.size = stats.size;
-							item.name = itemName;
-
+							
 				  		if(stats.isDirectory()){
                 item.isDirectory = true;
-                item.base = itemName;
+                item.base = proxyName;
 								
 								getFolderContents(path + itemName, callback, item, function(){
 									completed++;
@@ -47,7 +49,7 @@ function getFolderContents(folder, callback, parent, resolve){
 									else{
 										item.path = filePath;
 										
-										if(itemName[0] == '.') item.hidden = true;
+										
 										
 										var split = itemName.split('.');
 										
@@ -92,14 +94,13 @@ function getFile(path, callback){
 			
 			file.modified = stats.mtime;
 			file.size = stats.size;
-			file.name = itemName;
+			file.hidden = itemName[0] == '.';
+			file.name = file.hidden ? itemName.substr(1) : itemName;
 			
 			fs.realpath(path, function(err, filePath){
 				if(err) callback(err);
 				else{
 					file.path = filePath;
-					
-					if(itemName[0] == '.') file.hidden = true;
 					
 					var split = itemName.split('.');
 					

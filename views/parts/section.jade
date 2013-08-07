@@ -18,7 +18,8 @@ section
 			include attachment
 	if info.items
 		each item, i in info.items
-			include itemOverview
+			if !item.hidden || loggedOn
+				include itemOverview
 	if info.form
 		if info.form.fields
 			include form
