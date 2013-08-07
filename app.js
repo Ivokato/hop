@@ -146,7 +146,8 @@ app.get('/:section', function(req, res){
 });
 
 app.get('/:section/:item', function(req, res){
-	if(req.params.section.split('.').length == 1 && req.params.item.split('.').length == 1){
+	//check if a file in the public folder is pointed at or not, or a hidden item in a section (normal procedure)
+	if(req.params.item.split('.').length == 1 || req.params.item[0] == '.'){
 		var section = site.sections.findOne({foldername: req.params.section}),
         item = section.items.findOne({foldername: req.params.item}),
 				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets).merge(item.stylesheets),
@@ -165,6 +166,11 @@ app.get('/:section/:item', function(req, res){
 		});
 	}
 	else req.next();
+});
+
+app.get(/\/([^\/]+)\/([^\/]+)/, function(req, res){
+	console.log('triggered route!');
+	console.log(req.params);
 });
 
 var lastLoginAttempt;
