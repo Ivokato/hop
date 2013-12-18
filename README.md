@@ -24,6 +24,14 @@ logo.(jpg/png): will be placed in site header
 
 background.(jpg/png) will be placed at the respective page as a background
 
-title.txt: will replace the foldername for the item or section
+title.txt: will replace the title for the item or section
+
+subtitle.txt: will be placed as a subtitle
 
 introdution.txt: will be placed on the overview page, and if present, allows item to be viewed exclusively, and hides other content
+
+body.txt: displayed below introduction in item or section view, depending on introduction.txt presence
+
+*.txt: displayed below body and before footer
+
+footer.txt: will be displayed lowest
