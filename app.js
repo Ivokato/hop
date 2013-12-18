@@ -129,8 +129,10 @@ app.get('/:section', function(req, res){
 				javascripts = site.javascripts.deepclone().merge(section.javascripts);
 		for(var index in section.items){
 			var item = section.items[index];
-			stylesheets = stylesheets.merge(item.stylesheets);
-			javascripts = javascripts.merge(item.javascripts);
+			if(!item.introduction){
+				stylesheets = stylesheets.merge(item.stylesheets);
+				javascripts = javascripts.merge(item.javascripts);
+			}
 		}
     //if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
 		
@@ -168,10 +170,11 @@ app.get('/:section/:item', function(req, res){
 	else req.next();
 });
 
-app.get(/\/([^\/]+)\/([^\/]+)/, function(req, res){
-	console.log('triggered route!');
-	console.log(req.params);
-});
+//what this for?
+//app.get(/\/([^\/]+)\/([^\/]+)/, function(req, res){
+//	console.log('triggered route!');
+//	console.log(req.params);
+//});
 
 var lastLoginAttempt;
 app.post('/login', function(req, res){

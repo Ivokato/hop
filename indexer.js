@@ -35,15 +35,33 @@ function redefine(site, eventName, filePath){
 		}
 		else {
 			fs.stat(filePath, function(err, stats){
-        if(stats.isDirectory()) getFolderContents(filePath, function(err, contents){
-					console.log('folder updated', contents);
-				});
+        if(stats.isDirectory()){
+          //getFolderContents(filePath, function(err, contents){
+          //  console.log('folder updated', contents);
+          //  getFile(filePath, function(err, file){
+          //    if (err) console.log(err)
+          //    else {
+          //      var fileContainer = {};
+          //      fileContainer[file.name] = file;
+          //      site.update(pathArray, fileContainer);
+          //    }
+          //  });
+          //});
+          var fileContainer = {},
+              folderName = pathArray[pathArray.length - 1];
+          fileContainer[folderName] = {isDirectory: true, base: folderName};
+          //console.log(stats);
+          //console.log(pathArray);
+          //throw('end');
+          site.update(pathArray, fileContainer);
+        }
 				else{
 					getFile(filePath, function(err, file){
 						if(err) console.log(err);
 						else{
 							var fileContainer = {};
 							fileContainer[file.name] = file;
+							if(file.extension == 'swp') return;
 							site.update(pathArray, fileContainer);
 						}
 					});

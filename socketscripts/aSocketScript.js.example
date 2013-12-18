@@ -1,0 +1,3 @@
+exports.start = function(io, app){
+	console.log('new socket.io script loaded!');
+}

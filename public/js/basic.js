@@ -15,7 +15,11 @@
 				.attr('src', lazyloader.makeSizedSrc(trueSrc, $this.width(), $this.height()))
 				.on({
 					'click.lightbox': function(){
-						$(this).lightbox();
+						var $this = $(this),
+								src = $this.attr('src');
+						if (!inLightboxIgnore(src)) {
+							$this.lightbox();
+						}
 					},
 					load: function(){
 						$this.removeAttr('style');
@@ -39,6 +43,20 @@
       return src[0] == '/' || src.indexOf(location.host) !== -1;
     };
   }
+	
+	function inLightboxIgnore(src) {
+		if (!window['lightboxIgnore']) {
+			return false;
+		}
+		else{
+			for (var i in lightboxIgnore) {
+				if (new RegExp(lightboxIgnore[i]).test(src)) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
   
   $.fn.overlay = function(){
     var $overlay = $('<div data-role="overlay">');
