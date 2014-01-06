@@ -22,7 +22,8 @@ var watch = require("watchr").watch,
       footer: true
     },
     reservedFolderNames = {
-      FormResponses: true
+      FormResponses: true,
+			'.git': true
     }
 ;
 
@@ -61,6 +62,7 @@ function redefine(site, eventName, filePath){
 						else{
 							var fileContainer = {};
 							fileContainer[file.name] = file;
+							if(file.name[file.name.length-1] == '~') return;
 							if(file.extension == 'swp') return;
 							site.update(pathArray, fileContainer);
 						}
@@ -266,7 +268,7 @@ function Section(name, site, data){
 	this.attachments = [];
 	this.modified = data.modified;
 	
-  if(data && countChildren(data)) this.addData(data.children);
+  if(data.children && countChildren.call(data.children)) this.addData(data.children);
 }
 (function(){
   this.addData = function(data){
@@ -602,3 +604,4 @@ function Form(json){
 }
 
 exports.Site = Site;
+

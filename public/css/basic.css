@@ -1,0 +1,47 @@
+
+
+.slideCaption{
+	color: white;
+	text-shadow: 1px 1px 4px black;
+	padding: 10px 0;
+}
+
+.filmstrip div{
+	cursor: pointer;
+}
+
+.filmstrip div.current {
+	box-shadow: 0 0 10px white inset;
+}
+
+.goLeft, .goRight{
+	width: 100px;
+	height: 100px;
+	opacity: 0.7;
+	cursor: pointer;
+}
+
+.goLeft:hover, .goRight:hover{
+	opacity: 1;
+}
+
+.goLeft{
+	background-image: url('/img/chevronLeft.png');
+	background-size: cover;
+}
+
+.goRight{
+	background-image: url('/img/chevronRight.png');
+	background-size: cover;
+}
+
+.loader{
+	background-image: url('/img/white_horizontal_loading.gif');
+	width: 32px;
+	height: 32px;
+}
+
+@media(-webkit-min-device-pixel-ratio: 2){
+	.goLeft{ background-image: url('/img/chevronLeftRet.png'); }
+	.goRight{ background-image: url('/img/chevronRightRet.png'); }
+}

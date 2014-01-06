@@ -11,7 +11,8 @@ article(id=item.foldername, class='overview')
 		p!= item.body
 	if item.images.length
 		if item.introduction
-			img(data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src=item.images[0].base + '.' + item.images[0].ext, alt=item.images[0].alt, title=item.images[0].alt)
+			a(href='/' + parentSection + '/' + item.foldername)
+				img(data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src=item.images[0].base + '.' + item.images[0].ext, alt=item.images[0].alt, title=item.images[0].alt)
 		else
 			each image, imagename in item.images
 				img(data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.base + '.' + image.ext, alt=image.alt, title=image.alt)
@@ -21,6 +22,8 @@ article(id=item.foldername, class='overview')
 	if item.attachments
 		each attachment, index in item.attachments
 			include attachment
+	if item.introduction
+		a.readmore(href='/' + parentSection + '/' + item.foldername)
 	if item.allowResponses
 		.responses
 			if item.responses

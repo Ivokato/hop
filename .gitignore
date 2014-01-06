@@ -12,6 +12,9 @@ content/*
 public/*
 !public/js/basic.js
 !public/js/connect.js
+!public/css/basic.css
+!public/img/chevron*
+!public/img/white_horizontal_loading.gif
 
 socketscripts/*
 !socketscripts/aSocketScript.js.example

@@ -1,10 +1,10 @@
 article(id=item.foldername, class=parentSection ? 'overview' : 'exclusive' )
   if item.title
     if parentSection
-      h2
+      h1
         a(href='/' + parentSection + '/' + item.foldername)!= item.title
     else
-      h2!= item.title
+      h1!= item.title
   if item.introduction
     p.heavy!= item.introduction
   if item.body
