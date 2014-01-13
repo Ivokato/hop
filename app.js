@@ -68,28 +68,14 @@ app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 app.get(/images\/(.+)/, function(req, res){
   console.log('image requested');
 	var imgPath = req.params[0],
-		  extension = imgPath.split('.').reverse()[0];
+		  extension = imgPath.split('.').pop();
   
-	//check if sized image is requested, then serve from resizerCache
-	if(/-[0-9]+x[0-9]/.test(req.params[0])){
-		site.imageCache.get(req.params[0], function(error, img){
-			if(error) {
-				console.log(error);
-			}
-			else res.writeHead(200, {'Content-Type': 'image/' + extension});
-			res.end(img, 'binary');
-		});
-	}
-	//serve normal image;
-	else fs.readFile('content/' + imgPath, function(error, img){
-    if(error){
-      console.log(error);
-      req.next();
-    }
-    else{
-      res.writeHead(200, {'Content-Type': 'image/' + extension });
-      res.end(img, 'binary');
-    }
+	site.imageCache.get(req.params[0], req.query, function(error, img){
+		if(error) {
+			console.log(error);
+		}
+		else res.writeHead(200, {'Content-Type': 'image/' + extension});
+		res.end(img, 'binary');
 	});
 });
 
@@ -169,12 +155,6 @@ app.get('/:section/:item', function(req, res){
 	}
 	else req.next();
 });
-
-//what this for?
-//app.get(/\/([^\/]+)\/([^\/]+)/, function(req, res){
-//	console.log('triggered route!');
-//	console.log(req.params);
-//});
 
 var lastLoginAttempt;
 app.post('/login', function(req, res){

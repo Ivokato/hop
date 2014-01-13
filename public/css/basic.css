@@ -1,8 +1,22 @@
+article img, section img{
+	cursor: pointer;
+}
 
+figure{
+	margin: 5px;
+	display: inline-block;
+}
+figure.default{
+	display: block;
+	margin: 0 auto;
+}
+
+/* Lightbox */
 
 .slideCaption{
 	color: white;
-	text-shadow: 1px 1px 4px black;
+	font-size: 20px;
+	text-shadow: 1px 1px 3px black, 0px 1px 3px black, 1px 0px 3px black;
 	padding: 10px 0;
 }
 
@@ -15,10 +29,13 @@
 }
 
 .goLeft, .goRight{
-	width: 100px;
-	height: 100px;
+	width: 200px;
+	height: 200px;
 	opacity: 0.7;
 	cursor: pointer;
+	background-size: 50%;
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
 }
 
 .goLeft:hover, .goRight:hover{
@@ -27,12 +44,10 @@
 
 .goLeft{
 	background-image: url('/img/chevronLeft.png');
-	background-size: cover;
 }
 
 .goRight{
 	background-image: url('/img/chevronRight.png');
-	background-size: cover;
 }
 
 .loader{
@@ -41,7 +56,13 @@
 	height: 32px;
 }
 
+.intents img{
+	cursor: pointer;
+}
+
 @media(-webkit-min-device-pixel-ratio: 2){
 	.goLeft{ background-image: url('/img/chevronLeftRet.png'); }
 	.goRight{ background-image: url('/img/chevronRightRet.png'); }
 }
+
+/* end Lightbox */

@@ -290,7 +290,7 @@ function Section(name, site, data){
 						fs.writeFileSync(
               this.site.path + '/' + this.foldername + '/background.less',
               'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item.path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}'
-            )
+            );
 					}
           else{
             if(this.images.removeOne({name: item.base})) this.site.imageCache.clear( this.foldername + '/' + itemname);
@@ -604,4 +604,3 @@ function Form(json){
 }
 
 exports.Site = Site;
-

@@ -132,7 +132,6 @@ function validatePath(basepath, path, callback){
   var array = path.split('/'),
       lowestDirectory = array.shift(),
       str = (basepath ? basepath + '/' : '') + lowestDirectory;
-  
   fs.exists(str, function(exists){
     if(exists){
       if(array.length) validatePath(str, array.join('/'), callback);
@@ -151,7 +150,9 @@ function validatePath(basepath, path, callback){
 function removeNonEmptyFolder(path, callback){
   var level = level || 0,
       callback = callback || function(){};
-  fs.exists(path, function(exists){
+	
+	
+	fs.exists(path, function(exists){
     if(!exists) callback();
     else {
       fs.readdir(path, function(error, files){

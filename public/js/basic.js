@@ -1,5 +1,5 @@
 //todo: inject this from content/config.json
-var lightboxFilmstripSize = {x: 150, y: 133};
+var lightboxFilmstripSize = {x: 100, y: 75};
 
 (function BasicSetup(){
   var socket = io.connect('/');
@@ -15,29 +15,38 @@ var lightboxFilmstripSize = {x: 150, y: 133};
             trueSrc = $this.attr('data-src'),
 						split = trueSrc.split('/').pop().split('.'),
 						srcName,
-						$figureElement;
+						$figureElement,
+						size = {x: $this.width(), y: $this.height()};
 				
 				split.pop();
 				srcName = split.join('.');
-
+				
 				$figureElement = $('figure[name="' + srcName + '"]');
-        
-				$this.attr('src', lazyloader.makeSizedSrc(trueSrc, $this.width(), $this.height()));
-				
-				if($figureElement.length) $this.prependTo($figureElement);
-				
-				$this.on({
-					'click.lightbox': function(){
-						var $this = $(this),
-								src = $this.attr('src');
-						if (!inLightboxIgnore(src)&& !$(this).attr('data-noLightbox')) {
-							$this.lightbox();
-						}
-					},
-					load: function(){
-						$this.removeAttr('style');
+
+				if($figureElement.length){
+					if($figureElement.width() && $figureElement.height()){
+						size = {x: $figureElement.width(), y: $figureElement.height()};
+					} else {
+						$this.addClass('default');
+						$figureElement.addClass('default');
 					}
-				});
+					$this.prependTo($figureElement);
+				}
+				
+				$this.attr('src', lazyloader.makeSizedSrc(trueSrc, size.x, size.y))
+					.on({
+						'click.lightbox': function(){
+							var $this = $(this),
+									src = $this.attr('src');
+							if (!inLightboxIgnore(src)&& !$(this).attr('data-noLightbox')) {
+								$this.lightbox();
+							}
+						},
+						load: function(){
+							$this.removeAttr('style');
+						}
+					})
+					.removeAttr('data-role');
       });
     };
 		this.makeSizedSrc = function(src, width, height){
@@ -118,8 +127,11 @@ var lightboxFilmstripSize = {x: 150, y: 133};
 					}),
 					$curFig = $overlay.find('figure'),
 					imgMaxWidth = frame.x,
-					imgMaxHeight = frame.y,
-					$spinner = $('<div class="loader">')
+					imgMaxHeight = frame.y;
+			
+			$overlay.find('div.loader').remove();
+
+			var $spinner = $('<div class="loader">')
 						.css({
 							'z-index': 5,
 							position: 'fixed'
@@ -316,7 +328,7 @@ var lightboxFilmstripSize = {x: 150, y: 133};
 					arrows.left.css({
 						position: 'fixed',
 						'z-index': 5,
-						left: arrows.left.width() / 2 + 'px',
+						left: 0,
 						top: (frame.y / 2) - (arrows.left.height() / 2) + 'px'
 					}).on('click', function(){
 						var $thumb;
@@ -328,7 +340,7 @@ var lightboxFilmstripSize = {x: 150, y: 133};
 					arrows.right.css({
 						position: 'fixed',
 						'z-index': 5,
-						right: arrows.right.width() / 2 + 'px',
+						right: 0,
 						top: (frame.y / 2) - (arrows.right.height() / 2) + 'px'
 					}).on('click', function(){
 						var $thumb;
