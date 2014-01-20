@@ -1,4 +1,5 @@
 var watch = require("watchr").watch,
+path = require('path'),
     fs = require("fs"),
     imgMagick = require("imagemagick"),
 		less = require("less"),
@@ -28,7 +29,7 @@ var watch = require("watchr").watch,
 ;
 
 function redefine(site, eventName, filePath){
-	  var pathArray = stripPath(site.path + '/', filePath).split('/');
+	  var pathArray = stripPath(site.path + path.sep, filePath).split( path.sep );
     
 		if(eventName == 'unlink' || eventName == 'delete'){
 			if(pathArray.length == 1) site.remove(pathArray[0]);
@@ -122,14 +123,22 @@ function Site(name, path){
       }
       else{
         if(file.extension in imageTypes){
+
 					if(file.base.toLowerCase() == 'logo') {
-						this.header.logo = '/images/' + stripPath(this.path, file.path);
-            console.log('logo: ', this.header.logo);
+            var logoPath = stripPath(this.path, file.path);
+            
+            this.imageCache.addEntry( logoPath );
+						this.header.logo = '/images/' + logoPath;
 					}
+
 					if(file.base.toLowerCase() == 'background') {
-						this.background = stripPath(this.path, file.path);
+            var bgndPath = stripPath(this.path, file.path);
+
+            this.imageCache.addEntry( bgndPath );
+
+						this.background = bgndPath;
             if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
-						fs.writeFile('content/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.path, file.path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}')
+						fs.writeFile('content/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + bgndPath + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}')
 					}
 				}
 				else if(file.extension == 'less' || file.extension == 'css'){
@@ -177,7 +186,7 @@ function Site(name, path){
       }
 			noChildren = false;
     }
-    validatePath('public', 'css', function(){
+    validatePath('public/css', function(){
       if(!site.background) fs.writeFileSync('public/css/background.less', '');
 		  if(!site.header.logo) fs.writeFileSync('public/css/logo.less', '');    
     });
@@ -286,15 +295,17 @@ function Section(name, site, data){
       else{
         if(item.extension in imageTypes){
           if(item.base.toLowerCase() == 'background') {
+            var bgndPath = stripPath(this.site.path, item.path);
+            this.site.imageCache.addEntry(bgndPath);
             
-						fs.writeFileSync(
-              this.site.path + '/' + this.foldername + '/background.less',
-              'html{min-height:100%;}body{min-height:100%;background: url(/images/' + stripPath(this.site.path, item.path) + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}'
+						fs.writeFile(
+              this.site.path + path.sep + this.foldername + path.sep + 'background.less',
+              'html{min-height:100%;}body{min-height:100%; background: url(/images/' + bgndPath + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + '; background-size:cover;}'
             );
 					}
           else{
-            if(this.images.removeOne({name: item.base})) this.site.imageCache.clear( this.foldername + '/' + itemname);
-            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize));
+            if(this.images.removeOne({name: item.base})) this.site.imageCache.clear( this.foldername + path.sep + itemname);
+            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize), this.site.imageCache);
           }
         }
 				else if(item.extension == 'less' || item.extension == 'css'){
@@ -303,7 +314,7 @@ function Section(name, site, data){
 					if(item.extension == 'less'){
 						lessparser.parse(item.contents, function(error, tree){
 							if(error) return console.log(error);
-							var fullpath = 'content/' + section.foldername + '/' + item.base + '.css';
+							var fullpath = 'content/' + section.foldername + path.sep + item.base + '.css';
 							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
 							fs.writeFileSync(fullpath, tree.toCSS());
 						});
@@ -355,12 +366,12 @@ function Section(name, site, data){
         }
         else if(extension in imageTypes){
           if(filename == 'background'){
-            if(fs.existsSync(this.site.path + '/' + this.foldername + '/background.less')){
-              fs.unlinkSync(this.site.path + + '/' + this.foldername + 'background.less');
+            if(fs.existsSync(this.site.path + path.sep + this.foldername + '/background.less')){
+              fs.unlinkSync(this.site.path + path.sep + this.foldername + 'background.less');
             }
           }
           else {
-            if(this.images.removeOne({name: filename})) this.site.imageCache.clear( this.foldername + '/' + name);
+            if(this.images.removeOne({name: filename})) this.site.imageCache.clear( this.foldername + path.sep + name);
           }
         }
         else if(extension == 'css' || extension == 'less') this.stylesheets.removeOne({name: filename});
@@ -373,7 +384,7 @@ function Section(name, site, data){
       }
       else{ //is a directory
         this.items.removeOne({foldername: name});
-        this.site.imageCache.clear(this.foldername + '/' + name);
+        this.site.imageCache.clear(this.foldername + path.sep + name);
       }
 			this.site.afterUpdate('/' + this.foldername);
 		}
@@ -447,16 +458,16 @@ function Item(name, section, data){
         }
         else if(part.extension in imageTypes){
           if(this.images.removeOne({name: part.base})) {
-						this.section.site.imageCache.clear( this.section.foldername + '/' + this.foldername + '/' + part.base);
+						this.section.site.imageCache.clear( this.section.foldername + path.sep + this.foldername + path.sep + part.base);
 					}
-          this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize));
+          this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize, this.section.site.imageCache));
         }
         else if(part.extension == 'less' || part.extension == 'css'){
           this.stylesheets.push({name: part.base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.css', date: part.modified });
           if(part.extension == 'less'){
 						lessparser.parse(part.contents, function(error, tree){
 							if(error) return console.log(error);
-							var fullpath = 'content/' + item.section.foldername + '/' + item.foldername + '/' + part.base + '.css';
+							var fullpath = 'content' + path.sep + item.section.foldername + path.sep + item.foldername + path.sep + part.base + '.css';
 							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
 							fs.writeFileSync(fullpath, tree.toCSS());
 						});
@@ -496,7 +507,7 @@ function Item(name, section, data){
       }
       else if(extension == 'css' || extension == 'less'){
         this.stylesheets.removeOne({name: filename});
-        var fullpath = 'content/' + this.section.foldername + '/' + this.foldername + '/' + filename + '.css';
+        var fullpath = 'content' + path.sep + this.section.foldername + path.sep + this.foldername + path.sep + filename + '.css';
         if(extension == 'less') if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
       }
       else if(extension == 'js') this.javascripts.removeOne({name: filename});
@@ -528,16 +539,38 @@ function replaceProps(a, b){
   }
 }
 
-function Image(fileRef, basepath, size){
-  var path = fileRef.path.split('/');
-  path.splice(path.length - 1, 1, fileRef.base);
+function Image(fileRef, basepath, size, cache){
+  var image = this,
+      localPath = fileRef.path.split('/');
+
   this.name = fileRef.base;
 	this.alt = fileRef.base;
-	this.base = '/images/' + stripPath(basepath, path.join('/'));
-  this.ext = fileRef.extension;
+	this.base = stripPath(basepath, localPath.join('/'));
 	this.modified = fileRef.modified;
   this.width = size.width;
   this.height = size.height;
+  this.aspect = this.width / this.height;
+
+  var doLog = image.name.toLowerCase() == 'mr-burns-saying-excellent';
+
+  this.entry = new cache.Entry(
+    (stripPath(basepath, localPath.join('/'))).substr(1),
+    function addEntryCallback(error, img) {
+      var aspect = image.entry.width / image.entry.height;
+      if(error) console.log(error);
+
+      image.width = Math.min(image.entry.width, image.width);
+      image.height = Math.min(image.entry.height, image.height);
+
+      if(aspect > image.aspect) {   
+        image.height = Math.round(image.width / aspect);
+      } else {
+        image.width = Math.round(image.height * aspect);
+      }
+
+      image.aspect = aspect;
+    }
+  );
 }
 
 function addTextFile(file){

@@ -24,6 +24,7 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 				$figureElement = $('figure[name="' + srcName + '"]');
 
 				if($figureElement.length){
+					$figureElement.addClass('hidden');
 					if($figureElement.width() && $figureElement.height()){
 						size = {x: $figureElement.width(), y: $figureElement.height()};
 					} else {
@@ -44,25 +45,30 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 						},
 						load: function(){
 							$this.removeAttr('style');
+							$figureElement.css({width: $this.width(), height: $this.height}).removeClass('hidden');
 						}
 					})
 					.removeAttr('data-role');
       });
     };
+
 		this.makeSizedSrc = function(src, width, height){
 			if( !this.isLocalSrc(src) ) return src;
-      var splitSrc = src.split('.');
-			splitSrc[splitSrc.length-2] += '-' + width + 'x' + height;
-			return splitSrc.join('.');
-		};		
-		this.getRawSrc = function(src){
-			var match = /-[0-9]+x[0-9]+/.exec(src);
-			if(!match || !this.isLocalSrc(src) ) return src;
-			else return src.replace(match[0], '');
+      var props = [];
+      if(width) props.push('width=' + width);
+      if(height) props.push('height=' + height);
+
+			return src + '?' + props.join('&');
 		};
+
+		this.getRawSrc = function(src){
+			return src.split('?')[0];
+		};
+
     this.isLocalSrc = function(src){
       return src[0] == '/' || src.indexOf(location.host) !== -1;
     };
+
   }
 	
 	function inLightboxIgnore(src) {

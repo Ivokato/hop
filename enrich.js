@@ -63,8 +63,33 @@ function countChildren(){
   return t;
 }
 
+function pickProperties(names){
+	var object = {},
+			name;
+
+	for(var i in names){
+		name = names[i];
+		if(name in this) object[name] = this[name];
+	}
+
+	return object;
+}
+
+function toCSV( delimiter, seperator ) {
+	var arr = [];
+	
+	seperator = seperator || '=';
+
+	for(var i in this){
+		arr.push( i + seperator + this[i] );
+	}
+	return arr.join(delimiter || ',');
+}
+
 Object.defineProperty(Array.prototype, 'findOne', {value: findOne});
 Object.defineProperty(Array.prototype, 'removeOne', {value: removeOne});
 Object.defineProperty(Array.prototype, 'merge', {value: merge});
 Object.defineProperty(Array.prototype, 'deepclone', {value: deepclone});
 Object.defineProperty(Object.prototype, 'countChildren', {value: countChildren});
+Object.defineProperty(Object.prototype, 'pickProperties', {value: pickProperties});
+Object.defineProperty(Object.prototype, 'toCSV', {value: toCSV});

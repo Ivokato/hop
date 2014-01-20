@@ -65,6 +65,13 @@ app.locals.generateToken = function(formName) {
 
 app.get('/', function(req, res){ res.redirect('/' + config.homesection); });
 
+
+var imgMimes = {
+  jpg: 'image/jpeg',
+  gif: 'image/gif',
+  png: 'image/png'
+};
+
 app.get(/images\/(.+)/, function(req, res){
   console.log('image requested');
 	var imgPath = req.params[0],
@@ -74,7 +81,7 @@ app.get(/images\/(.+)/, function(req, res){
 		if(error) {
 			console.log(error);
 		}
-		else res.writeHead(200, {'Content-Type': 'image/' + extension});
+		else res.writeHead( 200, {'Content-Type': imgMimes[extension]} );
 		res.end(img, 'binary');
 	});
 });

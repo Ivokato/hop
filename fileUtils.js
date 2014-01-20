@@ -1,50 +1,51 @@
-var fs = require("fs"),
-    utfTypes = ['css','less','js','json','xml','txt'];
+var path = require('path'),
+		fs = require("fs"),
+		utfTypes = ['css','less','js','json','xml','txt'];
 
-function getFile(path, item, itemName, callback){
+// function getFile(path, item, itemName, callback){
 	
-}
+// }
 
 function getFolderContents(folder, callback, parent, resolve){
 	if(!parent) parent = {};
 
 	fs.readdir(folder, function(err, folderContents){
 		var items = {},
-		    itemName, i,
-		    total = 0, completed = 0,
-				path = folder + '/';
+				itemName, i,
+				total = 0, completed = 0,
+				localPath = folder + path.sep;
 
-	  if(err) callback(err);
-    else{
-      for(i in folderContents){
+		if(err) callback(err);
+		else{
+			for(i in folderContents){
 				total++;
 				(function(i, itemName){
 					var item = {};
-          items[itemName] = item;
-          
+					items[itemName] = item;
+					
 					parent.children = items;
 
-	  			fs.stat(path + itemName, function(err, stats){
-		  			if(err) callback(err);
-			  		else{
-              item.modified = stats.mtime;
+					fs.stat(localPath + itemName, function(err, stats){
+						if(err) callback(err);
+						else{
+							item.modified = stats.mtime;
 							item.size = stats.size;
 							//item.name = itemName;
 							item.hidden = itemName[0] == '.';
 							item.name = item.hidden ? itemName.substr(1) : itemName;
 							
-				  		if(stats.isDirectory()){
-                item.isDirectory = true;
-                item.base = itemName;
+							if(stats.isDirectory()){
+								item.isDirectory = true;
+								item.base = itemName;
 								
-								getFolderContents(path + itemName, callback, item, function(){
+								getFolderContents(localPath + itemName, callback, item, function(){
 									completed++;
 									if(completed == total) (resolve || callback)(null, items);
 								});
-                
-					  	}
-						  else{
-								fs.realpath(path + itemName, function(err, filePath){
+								
+							}
+							else{
+								fs.realpath(localPath + itemName, function(err, filePath){
 									if(err) callback(err);
 									else{
 										item.path = filePath;
@@ -60,7 +61,7 @@ function getFolderContents(folder, callback, parent, resolve){
 										item.base = split.join('.');
 										
 										if(utfTypes.indexOf(item.extension) !== -1){
-											fs.readFile(path + itemName, 'utf8', function(err, contents){
+											fs.readFile(localPath + itemName, 'utf8', function(err, contents){
 												if(err) callback(err);
 												else{
 													item.contents = contents;
@@ -75,9 +76,9 @@ function getFolderContents(folder, callback, parent, resolve){
 										}
 									}
 								});
-						  }
-					  }
-				  });
+							}
+						}
+					});
 				})(i, folderContents[i]);
 			}
 			if(total == 0) (resolve || callback)(null, items);
@@ -128,61 +129,73 @@ function getFile(path, callback){
 	});
 }
 
-function validatePath(basepath, path, callback){
-  var array = path.split('/'),
-      lowestDirectory = array.shift(),
-      str = (basepath ? basepath + '/' : '') + lowestDirectory;
-  fs.exists(str, function(exists){
-    if(exists){
-      if(array.length) validatePath(str, array.join('/'), callback);
-      else callback();
-    }
-    else fs.mkdir(str, function(error){
-      if(error) console.log(error);
-      else {
-        if(array.length) validatePath(str, array.join('/'), callback);
-        else callback();
-      }
-    })
-  });
+function validatePath(localPath, callback) {
+	
+	callback = callback || function(){};
+
+	fs.exists(localPath, function(exists){
+		var localPathArray,
+				newPathArray = [],
+				base;
+
+		if(exists) callback();
+		else {
+			localPathArray = localPath.split(path.sep);
+
+			//take the last part of the path and check for existence
+			do {
+				newPathArray.unshift( localPathArray.pop() );
+			} while( !fs.existsSync( localPathArray.join( path.sep ) ) );
+			
+			base = localPathArray.join( path.sep ) + path.sep;
+
+			while(newPathArray.length && newPathArray[0]) {
+				base += newPathArray.shift() + path.sep;
+				fs.mkdirSync(base);
+			}
+
+			callback();
+		}
+
+	});
 }
 
 function removeNonEmptyFolder(path, callback){
-  var level = level || 0,
-      callback = callback || function(){};
+	var level = level || 0,
+			callback = callback || function(){};
 	
 	
 	fs.exists(path, function(exists){
-    if(!exists) callback();
-    else {
-      fs.readdir(path, function(error, files){
-        if(files.length){
-          var i = 0,
-              t = 0,
-              done = false,
-              increment = function(error){
-                if(error) console.log(error);
-                t++;
-                if((t == +i + 1) && done) {
-                  fs.rmdir(path, callback);
-                }
-              };
-          
-          for(i in files){
-            (function(file){
-              var localPath = path + '/' + file;
-              fs.stat(localPath, function(error, stats){
-                if(stats.isDirectory()) removeNonEmptyFolder(localPath, increment);
-                else fs.unlink(localPath, increment);
-              });
-            })(files[i]);
-          }
-          done = true;
-        }
-        else fs.rmdir(path, callback);
-      });
-    }
-  });
+		if(!exists) callback();
+		else {
+			fs.readdir(path, function(error, files){
+				if(files.length){
+					var i = 0,
+							t = 0,
+							done = false,
+							increment = function(error){
+								if(error) console.log(error);
+								t++;
+								if((t == +i + 1) && done) {
+									fs.rmdir(path, callback);
+								}
+							};
+					
+					for(i in files){
+						(function(file){
+							var localPath = path + '/' + file;
+							fs.stat(localPath, function(error, stats){
+								if(stats.isDirectory()) removeNonEmptyFolder(localPath, increment);
+								else fs.unlink(localPath, increment);
+							});
+						})(files[i]);
+					}
+					done = true;
+				}
+				else fs.rmdir(path, callback);
+			});
+		}
+	});
 }
 
 exports.getFile = getFile;
