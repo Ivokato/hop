@@ -24,7 +24,7 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 				$figureElement = $('figure[name="' + srcName + '"]');
 
 				if($figureElement.length){
-					$figureElement.addClass('hidden');
+					
 					if($figureElement.width() && $figureElement.height()){
 						size = {x: $figureElement.width(), y: $figureElement.height()};
 					} else {
@@ -45,7 +45,7 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 						},
 						load: function(){
 							$this.removeAttr('style');
-							$figureElement.css({width: $this.width(), height: $this.height}).removeClass('hidden');
+							$figureElement.css({width: $this[0].naturalWidth, height: $this[0].naturalHeight});
 						}
 					})
 					.removeAttr('data-role');
