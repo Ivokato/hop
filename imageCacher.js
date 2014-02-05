@@ -2,16 +2,21 @@ var path = require('path'),
     fs = require("fs"),
     imgMagick = require("imagemagick"),
     fileUtils = require("./fileUtils.js"),
+    MemoryStore = require('./memoryStore.js'),
     validatePath = fileUtils.validatePath,
     removeNonEmptyFolder = fileUtils.removeNonEmptyFolder;
 
 function ImageCache(maxSize, options){
 	if(!options) options = {};
   this.maxSize = options.maxSize || maxSize * (1024 * 1024);
-  this.currentSize = 0;
+  this.diskSize = 0;
   this.entries = {};
   this.storageDir = options.storageDir || 'imagecache';
 	this.basePath = options.basePath || 'content';
+
+  this.memoryStore = new MemoryStore(options);
+
+  this.doMemoryStore = true;
   
   this.factory(); //enable internal types to run with proper scope
 	var cache = this;
@@ -43,22 +48,22 @@ function ImageCache(maxSize, options){
         entry, e,
         view, v;
 
-    if(this.currentSize > this.maxSize){
+    if(this.diskSize > this.maxSize){
       viewItems = [];
 
       for(e in this.entries){
         entry = this.entries[e];
 
-        for(var v in entry.views){
-          var view = entry.views[v];
+        for(v in entry.views){
+          view = entry.views[v];
 
           viewItems.push({entry: entry, view: view, size: view.size, time: view.time});
         }
       }
 
-      viewItems.sort(function(a,b){ return b.time - a.time });
+      viewItems.sort(function(a,b){ return b.time - a.time; });
       
-      while(this.currentSize > this.maxSize && views.length > 1){
+      while(this.diskSize > this.maxSize && views.length > 1){
         viewItem = views.pop();
         viewItem.entry.remove(viewItem.view);
       }
@@ -119,7 +124,7 @@ function ImageCache(maxSize, options){
       };
 
       this.get = function getEntry(query, callback){
-        var string, version;
+        var string, version, CSVQuery, fullname, cached;
 
         if (!query.countChildren()) {
 
@@ -131,7 +136,16 @@ function ImageCache(maxSize, options){
 
           this.sanitizeBounds(query);
           query = query.pickProperties(['width', 'height']);
-          view = this.views[query.toCSV()];
+          CSVQuery = query.toCSV();
+          fullname = this.path + CSVQuery;
+          cached = cache.memoryStore.get(fullname);
+
+          if(cached){
+            callback(null, cached);
+            return;
+          }
+
+          view = this.views[CSVQuery];
 
           if(view){
             view.get(callback);
@@ -139,6 +153,7 @@ function ImageCache(maxSize, options){
           else {
             this.addView(query, function(error, img){
               callback(error, img);
+              cache.memoryStore.put(fullname, img);
             });
           }
 
@@ -152,25 +167,31 @@ function ImageCache(maxSize, options){
       };
 
       this.sanitizeBounds = function sanitizeBounds(query) {
+        
         //only supplied with or height
         if(!query.width && query.height || query.width && !query.height) {
 
           if(query.width) {
-            query.width = Math.min(query.width, this.width);
+            query.width = Math.min(+query.width, this.width);
             query.height = Math.round(query.width / this.aspect);
           }
           else {
-            query.height = Math.min(query.height, this.height);
+            query.height = Math.min(+query.height, this.height);
             query.width = Math.round(query.height * this.aspect);
           }
         }
         else if(query.width && query.height) { //width & height
-          query.width = Math.min(this.width, query.width);
-          query.height = Math.min(this.height, query.height);
+          query.width = Math.min(this.width, +query.width);
+          query.height = Math.min(this.height, +query.height);
 
           if(!query.crop){
-            if(query.width / this.aspect > query.height) query.width = Math.round(query.height * this.aspect);
-            else if(query.heigt * this.aspect > query.width) query.height = Math.round(query.width / this.aspect);
+            var qAspect = query.width / query.height;
+            
+            if(qAspect > this.aspect){
+              query.width = Math.round(query.height * this.aspect);
+            } else if(qAspect < this.aspect) {
+              query.height = Math.round(query.width / this.aspect);
+            }
           }
         }
         else { //no width or height
@@ -219,7 +240,7 @@ function ImageCache(maxSize, options){
           fs.stat(view.path, function(error, stats){
             if(!error){
               view.size = stats.size;
-              cache.currentSize += stats.size;
+              cache.diskSize += stats.size;
               cache.check();
             }
             else console.log(error);
@@ -235,7 +256,7 @@ function ImageCache(maxSize, options){
       };
 
       this.remove = function(){
-        cache.currentSize -= this.size;
+        cache.diskSize -= this.size;
 
         fs.unlink(this.path);
       };
