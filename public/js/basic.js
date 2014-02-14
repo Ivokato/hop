@@ -109,8 +109,8 @@ var lightboxFilmstripSize = {x: 100, y: 75};
     });
 		$overlay.animate({opacity: 1}, 500);
     return $overlay;
-  }
-	
+  };
+
 	$.fn.lightbox = function(options, callback){
 		options = options || {};
 
