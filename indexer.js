@@ -30,7 +30,6 @@ path = require('path'),
 
 function redefine(site, eventName, filePath){
 	  var pathArray = stripPath(site.path + path.sep, filePath).split( path.sep );
-    
 		if(eventName == 'unlink' || eventName == 'delete'){
 			if(pathArray.length == 1) site.remove(pathArray[0]);
 			else site.sections.findOne({foldername: pathArray.shift()}).remove(pathArray);
@@ -463,6 +462,7 @@ function Item(name, section, data){
           this.images.push(new Image(part, this.section.site.path, this.defaultImageSize || this.section.defaultImageSize || this.section.site.defaultImageSize, this.section.site.imageCache));
         }
         else if(part.extension == 'less' || part.extension == 'css'){
+          this.stylesheets.removeOne({name: part.base});
           this.stylesheets.push({name: part.base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.css', date: part.modified });
           if(part.extension == 'less'){
 						lessparser.parse(part.contents, function(error, tree){

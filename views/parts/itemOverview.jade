@@ -12,7 +12,7 @@ article(id=item.foldername, class='overview')
 	if item.images.length
 		if item.introduction
 			a(href='/' + parentSection + '/' + item.foldername)
-				img( data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src='/images' + item.images[0].base, alt=item.images[0].alt, title=item.images[0].alt )
+				img( data-noLightbox="true", data-role="imgPlaceholder", style="width: " + item.images[0].width + 'px; height:' + item.images[0].height + "px; display: inline-block;", data-src='/images' + item.images[0].base, alt=item.images[0].alt, title=item.images[0].alt )
 		else
 			each image, imagename in item.images
 				img( data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src='/images' + image.base, alt=image.alt, title=image.alt )

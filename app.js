@@ -44,7 +44,11 @@ app.configure(function(){
   app.use(express.methodOverride());
   app.use(express.cookieParser(config.secret || 'your secret here'));
   app.use(express.session());
-	app.use(function(req, res, next){ res.locals.loggedOn = req.session.loggedOn; next(); });
+	app.use(function setLocals(req, res, next){
+    res.locals.loggedOn = req.session.loggedOn;
+    res.locals.isAjax = req.headers['x-requested-with'] && req.headers['x-requested-with'] === 'XMLHttpRequest';
+    next();
+  });
   app.use(app.router);
   app.use(require('less-middleware')({ src: __dirname + '/public' }));
   //app.use(express.static(path.join(__dirname, 'public')));

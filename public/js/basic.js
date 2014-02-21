@@ -1,32 +1,230 @@
 //todo: inject this from content/config.json
 var lightboxFilmstripSize = {x: 100, y: 75};
 
+// transitions
+var pageTransitions = {
+			crossfade: function($oldContent, injectNew, removeOld){
+				$oldContent.animate({opacity: 0}, 100, function(){
+					removeOld();
+					injectNew({opacity: 0}, function($newContent, done){
+						$newContent.animate({opacity: 1}, 100, function(){
+							done();
+						});
+					});
+				});
+			}
+		};
+
+function pageTransition($oldContent, injectNew, removeOld, style){
+	if(style && pageTransitions[style]){
+		pageTransitions[style]($oldContent, injectNew, removeOld);
+		return;
+	}
+	//pick a random transition because none supplied
+	var transitions = [],
+			i, randomTransition;
+	for(i in pageTransitions){
+		transitions.push(pageTransitions[i]);
+	}
+	randomTransition = transitions[Math.floor(Math.random() * transitions.length)];
+	randomTransition($oldContent, injectNew, removeOld);
+}
+// end transitions
+
 (function BasicSetup(){
-  var socket = io.connect('/');
-  socket.on('reload', function (data) {
-    if(data.path.indexOf(location.pathname) !== -1 || data.path == '/') location.reload();
-  });
-  
-  function LazyLoader(){
-    this.init = function(){
-	  var lazyloader = this;
-      $('[data-role=imgPlaceholder]').each(function(){
-        var $this = $(this),
-            trueSrc = $this.attr('data-src'),
+
+	var socket = io.connect('/');
+	socket.on('reload', function (data) {
+		if(data.path.indexOf(location.pathname) !== -1 || data.path == '/') location.reload();
+	});
+
+	var cachedContent = {},
+			initialUrl = location.href, //prevent first time pop
+			getCallback;
+
+	$(window).on('popstate', function(event){
+		var href = location.href;
+		if(href == initalUrl){
+			initialUrl = null;
+			return;
+		}
+		if(cachedContent[href]){
+			applyPageTransition(cachedContent[href], href);
+		} else {
+			$.get(href, function(result){
+				cachedContent[href] = result;
+				applyPageTransition(result, href);
+			});
+		}
+	});
+
+	$('body').on('hover', 'a', function(){
+		var href = $(this).attr('href');
+		if(cachedContent[href] || (href[0] !== '/' && href[1] === '/') && href.indexOf(location.host) === -1){
+			return;
+		}
+		$.get(this.href, function(result){
+			cachedContent[href] = result;
+			if(getCallback){
+				getCallback(result);
+				getCallback = null;
+			}
+		});
+	}).on('click', 'a', function(event){
+		var href = $(this).attr('href');
+
+		if((href[0] !== '/' && href[1] === '/') && href.indexOf(location.host) === -1){
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		if(cachedContent[href]){
+			applyPageTransition(cachedContent[href], href);
+		} else {
+			getCallback = function(data){ applyPageTransition(data, href); };
+		}
+	});
+
+	function applyPageTransition(newData, href){
+		var $content = $('#content'),
+				$oldContent = $content.children(),
+				$oldScripts = $('#scripts').children('script'),
+				$oldStyles = $('head link[rel="stylesheet"][data-isdefault!="true"]'),
+				$newData = $(newData),
+				$newContent = $newData.find('#content').children(),
+				newTitle = $newData.find('title').html(),
+				$newStyles = $newData.find('#styles').children(),
+				newUniqueStyles = [],
+				$newScripts = $newData.find('#scripts').children(),
+				$transition = $.Deferred(),
+				arrived = false,
+				removed = false,
+				styleSources = [];
+
+		history.pushState(null, newTitle, href);
+
+		$transition.progress(function(string){
+			if(string == 'arrived') arrived = true;
+			if(string == 'removed') removed = true;
+			if(arrived && removed){
+				$transition.resolve();
+			}
+		});
+
+		$transition.done(function(){
+			$(window).trigger('pagechanged');
+		});
+
+		//determine which styles to append
+		$newStyles.each(function(i, currentStyle){
+			var $currentStyle = $(currentStyle),
+					href = $currentStyle.attr('href');
+
+			if( !$oldStyles.find('[href="' + href + '"]').length ){
+				newUniqueStyles.push($currentStyle);
+			}
+			
+			styleSources.push(href);
+		});
+		
+		pageTransition(
+			$oldContent,
+			function injectNew(css, callback){
+				var $cssloader = new $.Deferred,
+						loadList = [];
+
+				for(var i in newUniqueStyles){
+					$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
+					loadList.push(newUniqueStyles[i].attr('href'));
+					newUniqueStyles[i].on('load', function(){
+						$cssloader.notify( $(this).attr('href') );
+					});
+				}
+				$cssloader.progress(function(href){
+					loadList.splice(loadList.indexOf(href), 1);
+					if(!loadList.length){
+						$cssloader.resolve();
+					}
+				});
+
+				$cssloader.done(function(){
+					$newContent.css(css).appendTo($content);
+
+					lazyloader.init($newContent);
+
+					$newContent.css(css);
+
+					$('title').html(newTitle);
+					$('nav a.active').removeClass('active');
+					$('nav a[href="' + href + '"]').addClass('active');
+
+					$newScripts.each(function(j, currentScript){
+						var $currentScript = $(currentScript),
+								src = $currentScript.attr('src');
+						if( !$oldScripts.find('[href="' + src + '"]').length ){
+							$('#scripts script').eq(-1).after($currentScript);
+						}
+					});
+
+					callback($newContent, function done(){
+						$transition.notify('arrived');
+					});
+				});
+
+				if(!loadList.length){
+					$cssloader.resolve();
+				} else {
+					//after the timeout, new css has hopefully applied
+					//(for browsers that don't support style load event)
+					setTimeout(function(){
+						$cssloader.resolve();
+					}, 1000);
+				}
+			},
+
+			function removeOld(){
+				$oldContent.remove();
+
+				$oldStyles.each(function(i, currentStyle){
+					var $currentStyle = $(currentStyle);
+					if(styleSources.indexOf($currentStyle.attr('href')) === -1){
+						$currentStyle.remove();
+					}
+				});
+
+				$transition.notify('removed');
+			}
+		);
+
+	}
+
+	function LazyLoader(){
+		this.init = function($element){
+			var lazyloader = this;
+			$element = $element || $(document.body);
+		
+			$element.find('[data-role=imgPlaceholder]').each(function(){
+				var $this = $(this),
+						trueSrc = $this.attr('data-src'),
 						split = trueSrc.split('/').pop().split('.'),
 						srcName,
 						$figureElement,
-						size = {x: $this.width(), y: $this.height()};
+						size = {x: $this.width(), y: $this.height()},
+						width, height;
 				
 				split.pop();
 				srcName = split.join('.');
 				
-				$figureElement = $('figure[name="' + srcName + '"]');
+				$figureElement = $element.find('figure[name="' + srcName + '"]');
 
 				if($figureElement.length){
+					width = $figureElement.width();
+					height = $figureElement.height();
 					
-					if($figureElement.width() && $figureElement.height()){
-						size = {x: $figureElement.width(), y: $figureElement.height()};
+					if(width && height){
+						size = {x: width, y: height};
 					} else {
 						$this.addClass('default');
 						$figureElement.addClass('default');
@@ -35,28 +233,28 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 				}
 				
 				$this.attr('src', lazyloader.makeSizedSrc(trueSrc, size.x, size.y))
-					.on({
-						'click.lightbox': function(){
-							var $this = $(this),
-									src = $this.attr('src');
-							if (!inLightboxIgnore(src)&& !$(this).attr('data-noLightbox')) {
-								$this.lightbox();
-							}
-						},
-						load: function(){
-							$this.removeAttr('style');
-							$figureElement.css({width: $this[0].naturalWidth, height: $this[0].naturalHeight});
+				.on({
+					'click.lightbox': function(){
+						var $this = $(this),
+								src = $this.attr('src');
+						if (!inLightboxIgnore(src)&& !$(this).attr('data-noLightbox')) {
+							$this.lightbox();
 						}
-					})
-					.removeAttr('data-role');
-      });
-    };
+					},
+					load: function(){
+						$this.removeAttr('style');
+						$figureElement.css({width: $this[0].naturalWidth, height: $this[0].naturalHeight});
+					}
+				})
+				.removeAttr('data-role');
+			});
+		};
 
 		this.makeSizedSrc = function(src, width, height){
 			if( !this.isLocalSrc(src) ) return src;
-      var props = [];
-      if(width) props.push('width=' + width);
-      if(height) props.push('height=' + height);
+			var props = [];
+			if(width) props.push('width=' + width);
+			if(height) props.push('height=' + height);
 
 			return src + '?' + props.join('&');
 		};
@@ -65,11 +263,11 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 			return src.split('?')[0];
 		};
 
-    this.isLocalSrc = function(src){
-      return src[0] == '/' || src.indexOf(location.host) !== -1;
-    };
+		this.isLocalSrc = function(src){
+			return (src[0] == '/' && src[1] !== '/') || src.indexOf(location.host) !== -1;
+		};
 
-  }
+	}
 	
 	function inLightboxIgnore(src) {
 		if (!window['lightboxIgnore']) {
@@ -84,46 +282,46 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 			return false;
 		}
 	}
-  
-  $.fn.overlay = function(){
-    var $overlay = $('<div data-role="overlay">');
-    $overlay.css({
+	
+	$.fn.overlay = function(){
+		var $overlay = $('<div data-role="overlay">');
+		$overlay.css({
 			opacity: 0,
-      background: 'rgba(0,0,0,.8)',
-      width: '100%',
-      height: '100%',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      'z-index': '1000'
-    });
+			background: 'rgba(0,0,0,.8)',
+			width: '100%',
+			height: '100%',
+			position: 'fixed',
+			top: 0,
+			left: 0,
+			'z-index': '1000'
+		});
 		
 		$(this).append($overlay);
 		
-    $overlay.on('click', function(e){
-      if(e.target !== this) return;
+		$overlay.on('click', function(e){
+			if(e.target !== this) return;
 			$overlay.animate({opacity: 0}, 200, function(){
 				$overlay.trigger('remove');
 				$overlay.remove();
 			});
-    });
+		});
 		$overlay.animate({opacity: 1}, 500);
-    return $overlay;
-  };
+		return $overlay;
+	};
 
 	$.fn.lightbox = function(options, callback){
 		options = options || {};
 
-    var $origImg = $(this),
+		var $origImg = $(this),
 				$siblings = $origImg.parents('article, section').eq(0).find('img'),
-    		$overlay = $('body').overlay(),
+				$overlay = $('body').overlay(),
 				rawSrc = lazyloader.getRawSrc($origImg.attr('src')),
 				frame = { x: $overlay.width(), y: $overlay.height() },
 				arrows,
 				filmstrip;
-    
+		
 		function setImage(src, caption, index){
-      var $img = $('<img>',{
+			var $img = $('<img>',{
 						'data-noIntent': true
 					}),
 					$newFig = $('<figure>', {
@@ -169,7 +367,7 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 				$caption.css(align, height);
 			}
 			
-    	$img.attr('src', lazyloader.makeSizedSrc(src, imgMaxWidth, imgMaxHeight));
+			$img.attr('src', lazyloader.makeSizedSrc(src, imgMaxWidth, imgMaxHeight));
 			
 			//for intents a.o.
 			rawSrc = src;
@@ -386,7 +584,7 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 						$intent = $('<img>', {src: imageIntents[i].icon, alt: imageIntents[i].name});
 						
 						(function(intent){
-						  $intent.on('click', function(){
+							$intent.on('click', function(){
 								intent.fun(rawSrc, []);
 							});
 						})(imageIntents[i]);
@@ -399,24 +597,24 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 			} //end options.bare
 		
 		setImage(rawSrc, $origImg.parent('figure').find('figcaption').html(), currentImageIndex);
-  };
-  
-  window.lazyloader = new LazyLoader;
-  window.socket = socket;
+	};
+	
+	window.lazyloader = new LazyLoader;
+	window.socket = socket;
 	window.imageIntents = [];
 })()
 
 $(document).ready(function(){
-  window.lazyloader.init();
+	window.lazyloader.init();
 });
 
 if(window.localStorage){
-  window.getStoredObject = function(identifier, parser){
-  var str = localStorage[identifier];
-    if(str) return (parser || JSON.parse)(str);
-    else return undefined;
-  };
-  window.setStoredObject = function(identifier, object, stringifier){
-    localStorage[identifier] = (stringifier || JSON.stringify)( object );
-  };
+	window.getStoredObject = function(identifier, parser){
+	var str = localStorage[identifier];
+		if(str) return (parser || JSON.parse)(str);
+		else return undefined;
+	};
+	window.setStoredObject = function(identifier, object, stringifier){
+		localStorage[identifier] = (stringifier || JSON.stringify)( object );
+	};
 }
