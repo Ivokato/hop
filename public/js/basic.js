@@ -44,7 +44,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 	$(window).on('popstate', function(event){
 		var href = location.href;
-		if(href == initalUrl){
+		if(href == initialUrl){
 			initialUrl = null;
 			return;
 		}
