@@ -136,12 +136,15 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						loadList = [];
 
 				for(var i in newUniqueStyles){
-					$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
-					loadList.push(newUniqueStyles[i].attr('href'));
-					newUniqueStyles[i].on('load', function(){
-						$cssloader.notify( $(this).attr('href') );
-					});
+					(function(style){
+						var href = newUniqueStyles[i].attr('href');
+						loadList.push(href);
+						loadCSS(href, function(){
+							$cssloader.notify( href );
+						});
+					})(newUniqueStyles[i]);
 				}
+
 				$cssloader.progress(function(href){
 					loadList.splice(loadList.indexOf(href), 1);
 					if(!loadList.length){
@@ -173,14 +176,16 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					});
 				});
 
+				console.log(loadList);
+
 				if(!loadList.length){
 					$cssloader.resolve();
 				} else {
 					//after the timeout, new css has hopefully applied
 					//(for browsers that don't support style load event)
-					setTimeout(function(){
-						$cssloader.resolve();
-					}, 1000);
+					// setTimeout(function(){
+					// 	$cssloader.resolve();
+					// }, 1000);
 				}
 			},
 
@@ -198,6 +203,21 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			}
 		);
 
+	}
+
+	function loadCSS(url, callback){
+    var link = document.createElement('link');
+        link.type = 'text/css';
+        link.rel = 'stylesheet';
+        link.href = url;
+
+    document.getElementsByTagName('head')[0].appendChild(link);
+
+    var img = document.createElement('img');
+    img.onerror = function(){
+        if(callback) callback(link);
+    }
+    img.src = url;
 	}
 
 	function LazyLoader(){
