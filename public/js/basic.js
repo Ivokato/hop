@@ -146,9 +146,10 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				}
 
 				$cssloader.progress(function(href){
+					console.log(loadList.length);
 					loadList.splice(loadList.indexOf(href), 1);
 					if(!loadList.length){
-						$cssloader.resolve();
+						setTimeout( $cssloader.resolve() );
 					}
 				});
 
