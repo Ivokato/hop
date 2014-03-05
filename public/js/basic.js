@@ -180,9 +180,9 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					});
 				});
 
-				// if(!loadList.length){
-				// 	$cssloader.resolve();
-				// }
+				if(!loadList.length){
+					$cssloader.resolve();
+				}
 			},
 
 			function removeOld(){
