@@ -135,28 +135,15 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			$oldContent,
 			function injectNew(css, callback){
 				var $cssloader = new $.Deferred,
-						loadList = [];
+						cssLoadList = [];
 
 				for(var i in newUniqueStyles){
-					//$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
-					loadList.push(newUniqueStyles[i].attr('href'));
-					// newUniqueStyles[i].on('load', function(){
-					// 	$cssloader.notify( $(this).attr('href') );
-					// });
+					cssLoadList.push(newUniqueStyles[i].attr('href'));
 				}
-				// $cssloader.progress(function(href){
-				// 	alert('href');
-				// 	loadList.splice(loadList.indexOf(href), 1);
-				// 	if(!loadList.length){
-				// 		$cssloader.resolve();
-				// 	}
-				// });
-				console.log(loadList);
-				LazyLoad.css(loadList, function(){
-					$cssloader.resolve();
-				});
 
 				$cssloader.done(function(){
+					var jsLoadList = [],
+							$jsLoader = new $.Deferred;
 					$newContent.css(css).appendTo($content);
 
 					imageLoader.init($newContent);
@@ -167,22 +154,28 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					$('nav a.active').removeClass('active');
 					$('nav a[href="' + href + '"]').addClass('active');
 
-					$newScripts.each(function(j, currentScript){
+					$newScripts.each(function addNewScripts(j, currentScript){
 						var $currentScript = $(currentScript),
 								src = $currentScript.attr('src');
+
 						if( !$oldScripts.find('[href="' + src + '"]').length ){
-							$('#scripts script').eq(-1).after($currentScript);
+							jsLoadList.push(src);
 						}
 					});
 
-					callback($newContent, function done(){
-						$transition.notify('arrived');
+					$jsLoader.done(function(){
+						callback($newContent, function transitionDone(){
+							$transition.notify('arrived');
+						});
 					});
+
+					if(jsLoadList.length) LazyLoad.js(jsLoadList, $jsLoader.resolve);
+					else $jsLoader.resolve();
+					
 				});
 
-				if(!loadList.length){
-					$cssloader.resolve();
-				}
+				if(cssLoadList.length) LazyLoad.css(cssLoadList, $cssloader.resolve);
+				else $cssloader.resolve();
 			},
 
 			function removeOld(){
