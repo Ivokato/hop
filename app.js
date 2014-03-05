@@ -28,7 +28,8 @@ var formTokens = {},
       }
     }); 
 
-if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
+//what?
+//if(fs.existsSync('public/css/style.css')) fs.unlinkSync('public/css/style.css');
 
 
 var site = new indexer.Site(config.sitename, config.contentpath),
@@ -76,6 +77,7 @@ var imgMimes = {
   png: 'image/png'
 };
 
+//todo get rid of images and other prefixes like it
 app.get(/images\/(.+)/, function(req, res){
   console.log('image requested');
 	var imgPath = req.params[0],
@@ -84,9 +86,12 @@ app.get(/images\/(.+)/, function(req, res){
 	site.imageCache.get(req.params[0], req.query, function(error, img){
 		if(error) {
 			console.log(error);
+      res.send(503, error);
 		}
-		else res.writeHead( 200, {'Content-Type': imgMimes[extension]} );
-		res.end(img, 'binary');
+		else{
+      res.writeHead( 200, {'Content-Type': imgMimes[extension]} );
+		  res.end(img, 'binary');
+    }
 	});
 });
 
@@ -139,7 +144,7 @@ app.get('/:section', function(req, res){
 			stylesheets: stylesheets,
 			javascripts: javascripts,
 			parentSection: req.params.section
-		} );
+		});
 	}
 	else req.next();
 });
@@ -151,8 +156,6 @@ app.get('/:section/:item', function(req, res){
         item = section.items.findOne({foldername: req.params.item}),
 				stylesheets = site.stylesheets.deepclone().merge(section.stylesheets).merge(item.stylesheets),
 				javascripts = site.javascripts.deepclone().merge(section.javascripts).merge(item.javascripts);
-    
-		//if(req.session.loggedOn) javascripts.push({src: '/socket.io/socket.io.js'}, {src: '/js/administrate.js'});
     
 		if(item.hidden && !req.session.loggedOn) res.redirect('/' + req.params.section);
 		

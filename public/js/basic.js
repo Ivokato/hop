@@ -138,7 +138,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						loadList = [];
 
 				for(var i in newUniqueStyles){
-					$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
+					//$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
 					loadList.push(newUniqueStyles[i].attr('href'));
 					// newUniqueStyles[i].on('load', function(){
 					// 	$cssloader.notify( $(this).attr('href') );
@@ -151,11 +151,15 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				// 		$cssloader.resolve();
 				// 	}
 				// });
+				console.log(loadList);
+				LazyLoad.css(loadList, function(){
+					$cssloader.resolve();
+				});
 
 				$cssloader.done(function(){
 					$newContent.css(css).appendTo($content);
 
-					lazyloader.init($newContent);
+					imageLoader.init($newContent);
 
 					$newContent.css(css);
 
@@ -176,45 +180,9 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					});
 				});
 
-				if(!loadList.length){
-					$cssloader.resolve();
-				} else {
-					//after the timeout, new css has hopefully applied
-					//(for browsers that don't support style load event)
-
-					(function checkSheetsLoaded(){
-						var loaded = [],
-								href,
-								link;
-						
-						for(var i in loadList){
-							href = loadList[i];
-							link = $('link[href="' + href + '"]')[0];
-							
-							if(
-								(link.sheet && link.sheet.cssRules && link.sheet.cssRules.length) ||
-								(link.styleSheet && link.styleSheet.cssText && link.styleSheet.cssText.length) ||
-								(link.innerHTML && link.innerHTML.length)
-							){
-								loaded.push(href);
-							}
-						}
-
-						for(var j in loaded){
-							loadList.splice(loadList.indexOf(loaded[j]), 1);
-						}
-						if(loadList.length) setTimeout(arguments.callee);
-						else {
-							//alert('all loaded');
-							setTimeout($cssloader.resolve, 1000);
-						}
-					})();
-
-					// setTimeout(function(){
-					// 	alert('resolving by timeout');
-					// 	$cssloader.resolve();
-					// }, 100000);
-				}
+				// if(!loadList.length){
+				// 	$cssloader.resolve();
+				// }
 			},
 
 			function removeOld(){
@@ -233,9 +201,9 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 	}
 
-	function LazyLoader(){
+	function ImageLoader(){
 		this.init = function($element){
-			var lazyloader = this;
+			var imageLoader = this;
 			$element = $element || $(document.body);
 		
 			$element.find('[data-role=imgPlaceholder]').each(function(){
@@ -265,7 +233,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					$this.prependTo($figureElement);
 				}
 				
-				$this.attr('src', lazyloader.makeSizedSrc(trueSrc, size.x, size.y))
+				$this.attr('src', imageLoader.makeSizedSrc(trueSrc, size.x, size.y))
 				.on({
 					'click.lightbox': function(){
 						var $this = $(this),
@@ -348,7 +316,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 		var $origImg = $(this),
 				$siblings = $origImg.parents('article, section').eq(0).find('img'),
 				$overlay = $('body').overlay(),
-				rawSrc = lazyloader.getRawSrc($origImg.attr('src')),
+				rawSrc = imageLoader.getRawSrc($origImg.attr('src')),
 				frame = { x: $overlay.width(), y: $overlay.height() },
 				arrows,
 				filmstrip;
@@ -400,7 +368,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				$caption.css(align, height);
 			}
 			
-			$img.attr('src', lazyloader.makeSizedSrc(src, imgMaxWidth, imgMaxHeight));
+			$img.attr('src', imageLoader.makeSizedSrc(src, imgMaxWidth, imgMaxHeight));
 			
 			//for intents a.o.
 			rawSrc = src;
@@ -506,7 +474,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						var $img = $(img),
 								origWidth = $img.width(),
 								origHeight = $img.height(),
-								rawThumbSrc = lazyloader.getRawSrc( $img.attr('src') ),
+								rawThumbSrc = imageLoader.getRawSrc( $img.attr('src') ),
 								aspect = origWidth / origHeight,
 								$figcaption = $img.parent('figure').find('figcaption'),
 								size,
@@ -525,7 +493,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 							size = { x: thumbSize.x, y: thumbSize.y };
 						}
 						
-						var thumbSrc = lazyloader.makeSizedSrc(rawThumbSrc, size.x, size.y),
+						var thumbSrc = imageLoader.makeSizedSrc(rawThumbSrc, size.x, size.y),
 								$thumb = $('<div>').css({
 									overflow: 'hidden',
 									float: 'left',
@@ -632,13 +600,13 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 		setImage(rawSrc, $origImg.parent('figure').find('figcaption').html(), currentImageIndex);
 	};
 	
-	window.lazyloader = new LazyLoader;
+	window.imageLoader = new ImageLoader;
 	window.socket = socket;
 	window.imageIntents = [];
 })()
 
 $(document).ready(function(){
-	window.lazyloader.init();
+	window.imageLoader.init();
 });
 
 if(window.localStorage){

@@ -39,7 +39,8 @@ function ImageCache(maxSize, options){
 			query = undefined;
 		}
 		
-		this.entries[src] && this.entries[src].get(query, callback);
+		if(this.entries[src]) this.entries[src].get(query, callback);
+    else callback('imageCache: image not found');
   };
 
   this.check = function(){
