@@ -136,22 +136,19 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						loadList = [];
 
 				for(var i in newUniqueStyles){
-					(function(style){
-						var href = newUniqueStyles[i].attr('href');
-						loadList.push(href);
-						loadCSS(href, function(){
-							$cssloader.notify( href );
-						});
-					})(newUniqueStyles[i]);
+					$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
+					loadList.push(newUniqueStyles[i].attr('href'));
+					newUniqueStyles[i].on('load', function(){
+						$cssloader.notify( $(this).attr('href') );
+					});
 				}
-
-				$cssloader.progress(function(href){
-					console.log(loadList.length);
-					loadList.splice(loadList.indexOf(href), 1);
-					if(!loadList.length){
-						setTimeout( $cssloader.resolve() );
-					}
-				});
+				// $cssloader.progress(function(href){
+				// 	alert('href');
+				// 	loadList.splice(loadList.indexOf(href), 1);
+				// 	if(!loadList.length){
+				// 		$cssloader.resolve();
+				// 	}
+				// });
 
 				$cssloader.done(function(){
 					$newContent.css(css).appendTo($content);
@@ -177,16 +174,45 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					});
 				});
 
-				console.log(loadList);
-
 				if(!loadList.length){
 					$cssloader.resolve();
 				} else {
 					//after the timeout, new css has hopefully applied
 					//(for browsers that don't support style load event)
+
+					(function checkSheetsLoaded(){
+						var loaded = [],
+								href,
+								link;
+
+						for(var i in loadList){
+							href = loadList[i];
+							link = $('link[href="' + href + '"]')[0];
+							
+							if(
+								(link.sheet && link.sheet.cssRules) ||
+								(link.styleSheet && link.styleSheet.cssText) ||
+								link.innerHTML
+							){
+								console.log('loaded ' + href);
+								loaded.push(href);
+							}
+						}
+
+						for(var j in loaded){
+							loadList.splice(loadList.indexOf(loaded[j]), 1);
+						}
+						if(loadList.length) setTimeout(arguments.callee);
+						else {
+							//alert('all loaded');
+							$cssloader.resolve();
+						}
+					})();
+
 					// setTimeout(function(){
+					// 	alert('resolving by timeout');
 					// 	$cssloader.resolve();
-					// }, 1000);
+					// }, 100000);
 				}
 			},
 
@@ -204,21 +230,6 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			}
 		);
 
-	}
-
-	function loadCSS(url, callback){
-    var link = document.createElement('link');
-        link.type = 'text/css';
-        link.rel = 'stylesheet';
-        link.href = url;
-
-    document.getElementsByTagName('head')[0].appendChild(link);
-
-    var img = document.createElement('img');
-    img.onerror = function(){
-        if(callback) callback(link);
-    }
-    img.src = url;
 	}
 
 	function LazyLoader(){
