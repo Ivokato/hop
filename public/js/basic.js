@@ -91,7 +91,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 		var $content = $('#content'),
 				$oldContent = $content.children(),
 				$oldScripts = $('#scripts').children('script'),
-				$oldStyles = $('head link[rel="stylesheet"][data-isdefault!="true"]'),
+				$oldStyles = $('head link[rel="stylesheet"][data-hopcore!="true"]'),
 				$newData = $(newData),
 				$newContent = $newData.find('#content').children(),
 				newTitle = $newData.find('title').html(),
@@ -101,7 +101,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				$transition = $.Deferred(),
 				arrived = false,
 				removed = false,
-				styleSources = [];
+				newStyleHrefs = [];
 
 		history.pushState(null, newTitle, href);
 
@@ -122,12 +122,14 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			var $currentStyle = $(currentStyle),
 					href = $currentStyle.attr('href');
 
-			if( !$oldStyles.find('[href="' + href + '"]').length ){
+			if( !$oldStyles.filter('[href="' + href + '"]').length ){
 				newUniqueStyles.push($currentStyle);
 			}
 			
-			styleSources.push(href);
+			newStyleHrefs.push(href);
 		});
+
+		console.log(newUniqueStyles);
 		
 		pageTransition(
 			$oldContent,
@@ -138,9 +140,9 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				for(var i in newUniqueStyles){
 					$('link[rel="stylesheet"]').eq(-1).after(newUniqueStyles[i]);
 					loadList.push(newUniqueStyles[i].attr('href'));
-					newUniqueStyles[i].on('load', function(){
-						$cssloader.notify( $(this).attr('href') );
-					});
+					// newUniqueStyles[i].on('load', function(){
+					// 	$cssloader.notify( $(this).attr('href') );
+					// });
 				}
 				// $cssloader.progress(function(href){
 				// 	alert('href');
@@ -204,7 +206,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						if(loadList.length) setTimeout(arguments.callee);
 						else {
 							//alert('all loaded');
-							$cssloader.resolve();
+							setTimeout($cssloader.resolve, 1000);
 						}
 					})();
 
@@ -220,7 +222,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 				$oldStyles.each(function(i, currentStyle){
 					var $currentStyle = $(currentStyle);
-					if(styleSources.indexOf($currentStyle.attr('href')) === -1){
+					if(newStyleHrefs.indexOf($currentStyle.attr('href')) === -1){
 						$currentStyle.remove();
 					}
 				});
