@@ -184,17 +184,16 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 						var loaded = [],
 								href,
 								link;
-
+						
 						for(var i in loadList){
 							href = loadList[i];
 							link = $('link[href="' + href + '"]')[0];
 							
 							if(
-								(link.sheet && link.sheet.cssRules) ||
-								(link.styleSheet && link.styleSheet.cssText) ||
-								link.innerHTML
+								(link.sheet && link.sheet.cssRules && link.sheet.cssRules.length) ||
+								(link.styleSheet && link.styleSheet.cssText && link.styleSheet.cssText.length) ||
+								link.innerHTML && link.innerHTML.length
 							){
-								console.log('loaded ' + href);
 								loaded.push(href);
 							}
 						}
@@ -476,12 +475,12 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 							if(spareWidth <= 0) return;
 
 							//determine distance from left or right
-							if((index + .5) * thumbSize.x < halfContainerWidth){
+							if((index + 0.5) * thumbSize.x < halfContainerWidth){
 								$filmstripContainer.scrollLeft(0);
-							} else if( ( ($siblings.length - index) + .5) * thumbSize.x < halfContainerWidth){
+							} else if( ( ($siblings.length - index) + 0.5) * thumbSize.x < halfContainerWidth){
 								$filmstripContainer.scrollLeft(filmstripWidth - containerWidth);
 							} else {
-								$filmstripContainer.scrollLeft( (index + .5) * ( filmstripWidth / $siblings.length ) - halfContainerWidth );
+								$filmstripContainer.scrollLeft( (index + 0.5) * ( filmstripWidth / $siblings.length ) - halfContainerWidth );
 							}
 
 							$filmstrip.find('div.current').removeClass('current');
