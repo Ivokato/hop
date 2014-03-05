@@ -90,20 +90,21 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 	function applyPageTransition(newData, href){
 		var $content = $('#content'),
 				$oldContent = $content.children(),
-				$oldScripts = $('#scripts').children('script'),
+				$oldScripts = $('script[data-hopcore!="true"]'),
 				$oldStyles = $('head link[rel="stylesheet"][data-hopcore!="true"]'),
 				$newData = $(newData),
 				$newContent = $newData.find('#content').children(),
 				newTitle = $newData.find('title').html(),
 				$newStyles = $newData.find('#styles').children(),
 				newUniqueStyles = [],
-				$newScripts = $newData.find('#scripts').children(),
+				$newScripts = $newData.filter('script'),
 				$transition = $.Deferred(),
 				arrived = false,
 				removed = false,
 				newStyleHrefs = [];
 
 		history.pushState(null, newTitle, href);
+		$('title').html(newTitle);
 
 		$transition.progress(function(string){
 			if(string == 'arrived') arrived = true;
@@ -128,8 +129,6 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			
 			newStyleHrefs.push(href);
 		});
-
-		console.log(newUniqueStyles);
 		
 		pageTransition(
 			$oldContent,
@@ -153,12 +152,12 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					$('title').html(newTitle);
 					$('nav a.active').removeClass('active');
 					$('nav a[href="' + href + '"]').addClass('active');
-
+					
 					$newScripts.each(function addNewScripts(j, currentScript){
 						var $currentScript = $(currentScript),
 								src = $currentScript.attr('src');
 
-						if( !$oldScripts.find('[href="' + src + '"]').length ){
+						if( !$('[src="' + src + '"]').length ){
 							jsLoadList.push(src);
 						}
 					});
