@@ -192,7 +192,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 							if(
 								(link.sheet && link.sheet.cssRules && link.sheet.cssRules.length) ||
 								(link.styleSheet && link.styleSheet.cssText && link.styleSheet.cssText.length) ||
-								link.innerHTML && link.innerHTML.length
+								(link.innerHTML && link.innerHTML.length)
 							){
 								loaded.push(href);
 							}
