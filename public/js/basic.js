@@ -74,6 +74,9 @@ var pageTransitions = {
 					$newContent.transition({
 						scale: 1
 					}, 2000, 'linear', function(){
+						$newContent.css({
+							'transform-origin': 'initial'
+						});
 						done();
 					});
 
