@@ -4,13 +4,79 @@ var lightboxFilmstripSize = {x: 100, y: 75};
 // transitions
 var pageTransitions = {
 			crossfade: function($oldContent, injectNew, removeOld){
-				$oldContent.animate({opacity: 0}, 100, function(){
+				$oldContent.transition({opacity: 0}, 200, 'ease', function(){
 					removeOld();
-					injectNew({opacity: 0}, function($newContent, done){
-						$newContent.animate({opacity: 1}, 100, function(){
+					injectNew({opacity: 0}, function injectCallback($newContent, done){
+						$newContent.transition({opacity: 1}, 300, 'ease', function(){
 							done();
 						});
 					});
+				});
+			},
+			flip: function($oldContent, injectNew, removeOld){
+				$oldContent.transition({
+					rotateY: 90,
+					opacity: 0
+				}, 600, 'in', function onOldTransitionEnd(){
+					removeOld();
+					injectNew({
+						rotateY: -90,
+						opacity: 0
+					},
+					function injectCallback($newContent, done){
+						$newContent.transition({
+							rotateY: 0,
+							opacity: 1
+						}, 600, 'out', done);
+					});
+				});
+			},
+			rotaSwap: function($oldContent, injectNew, removeOld){
+				$oldContent
+				.css({'transform-origin': '50% 0%'})
+				.transition({
+					rotate: 180,
+					opacity: 0
+				}, 1500, 'in', function onOldTransitionEnd(){
+					removeOld();
+					injectNew({
+						rotate: -180,
+						opacity: 0,
+						'transform-origin': '50% 0%'
+					},
+					function injectCallback($newContent, done){
+						$newContent.transition({
+							rotate: 0,
+							opacity: 1
+						}, 1500, 'out', done);
+					});
+				});
+			},
+			shiftNext: function($oldContent, injectNew, removeOld){
+				injectNew({
+					'transform-origin': '100% 0%',
+					scale: 0,
+					opacity: 1
+				}, function injectCallback($newContent, done){
+
+					$oldContent
+					.css({
+						'transform-origin': '0% 0%',
+						position: 'absolute',
+						top: $oldContent.offset().top + 'px',
+						left: $oldContent.offset().left + 'px',
+						width: $oldContent.width() + 'px'
+					})
+					.transition({
+						scale: 0
+					}, 2000, 'linear', removeOld);
+
+					$newContent.transition({
+						scale: 1
+					}, 2000, 'linear', function(){
+						done();
+					});
+
 				});
 			}
 		};
@@ -98,24 +164,26 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 				$newStyles = $newData.find('#styles').children(),
 				newUniqueStyles = [],
 				$newScripts = $newData.filter('script'),
-				$transition = $.Deferred(),
+				$pageTransition = $.Deferred(),
 				arrived = false,
 				removed = false,
 				newStyleHrefs = [];
 
+		$(document).trigger('pageTransitionBegin');
+
 		history.pushState(null, newTitle, href);
 		$('title').html(newTitle);
 
-		$transition.progress(function(string){
+		$pageTransition.progress(function(string){
 			if(string == 'arrived') arrived = true;
 			if(string == 'removed') removed = true;
 			if(arrived && removed){
-				$transition.resolve();
+				$pageTransition.resolve();
 			}
 		});
 
-		$transition.done(function(){
-			$(window).trigger('pagechanged');
+		$pageTransition.done(function(){
+			$(document).trigger('pageTransitionEnd');
 		});
 
 		//determine which styles to append
@@ -164,7 +232,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 					$jsLoader.done(function(){
 						callback($newContent, function transitionDone(){
-							$transition.notify('arrived');
+							$pageTransition.notify('arrived');
 						});
 					});
 
@@ -187,7 +255,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 					}
 				});
 
-				$transition.notify('removed');
+				$pageTransition.notify('removed');
 			}
 		);
 
@@ -570,15 +638,32 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 
 			if(window.imageIntents && window.imageIntents.length){
-				var $imageIntents = $('<div>', {'class': 'intents', position: 'absolute'}),
+				var $imageIntents = $('<div>', {
+						'class': 'intents', css: {
+								position: 'absolute',
+								top: '10px',
+								left: '10px'
+							}
+						}),
 						$intent;
 					
 					for(var i in imageIntents){
 						$intent = $('<img>', {src: imageIntents[i].icon, alt: imageIntents[i].name});
 						
 						(function(intent){
-							$intent.on('click', function(){
-								intent.fun(rawSrc, []);
+							$intent.on({
+								click: function(){
+									intent.fun(rawSrc, []);
+								},
+								mouseenter: function(){
+									var $tooltip = $('<span class="intentHover-' + intent.name + '">' + intent.name + '</span>');
+									$tooltip.css({opacity: 0, color: 'white'});
+									$(this).after($tooltip);
+									$tooltip.transition({opacity: 1});
+								},
+								mouseleave: function(){
+									$('span.intentHover-' + intent.name).transition({opacity: 0}, 100, function(){ $(this).remove(); });
+								}
 							});
 						})(imageIntents[i]);
 						
