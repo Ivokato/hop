@@ -1,0 +1,20 @@
+doctype html
+html
+head
+  title= info.title
+  link(href='/css/edit.css', rel='stylesheet', data-hopcore="true")
+  block header
+body
+  header#menu
+  	block menu
+  aside#panel
+  	block #panel
+  section#view
+  	block #view
+  #defaultScripts
+    span(data-backup="script(src='//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js', data-hopcore='true')")
+    script(src='/js/lib/jquery-1.8.3.min.js', data-hopcore='true')
+    script(src='/js/lib/transit.js', data-hopcore='true')
+    script(src='/socket.io/socket.io.js', data-hopcore='true')
+  #scripts
+    block footer
