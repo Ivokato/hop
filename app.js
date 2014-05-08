@@ -15,7 +15,7 @@ var fs = require('fs'),
     socketeer = require('./socketeer.js').socketeer,
     gzippo = require('gzippo'),
     scheduler = require('node-schedule'),
-    sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail
+    sendMail = new (require('./mailgunner.js').Mailgun)(config.mailgunSettings).sendMail;
 
 var applyRoutes = require('./hoprouter.js').applyRoutes;
 
