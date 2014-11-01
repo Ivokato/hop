@@ -526,9 +526,16 @@ function Item(name, section, data){
 }).call(Item.prototype);
 
 function createMenuFromStructure(structure){
-  var menu = [];
+  var menu = [], section, item, menuSection, menuItem;
+
   for(var index in structure.sections){
-    menu[structure.sections[index].order] = structure.sections[index].name;
+    section = structure.sections[index];
+    menuSection = menu[section.order] = {name: structure.sections[index].name, children: []};
+    for(var itemIndex in section.items){
+      item = section.items[itemIndex];
+
+      menuSection.children[item.order] = {name: item.name};
+    }
   }
   return menu
 }

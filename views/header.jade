@@ -10,4 +10,9 @@ if header
     if header.menu
       nav
         each menuItem in header.menu
-          a(href="/" + menuItem, class=parentSection ? parentSection == menuItem ? "active" : "" : "")= menuItem
+          div(class=parentSection ? parentSection == menuItem.name ? "active" : "" : "")
+            a(href="/" + menuItem.name, class=parentSection ? parentSection == menuItem.name ? "active" : "" : "")= menuItem.name
+            if menuItem.children
+              div.dropdown
+                each child in menuItem.children
+                  a(href="/" + menuItem.name + '/' + child.name, class=parentSection ? parentSection == child.name ? "active" : "" : "")= child.name
