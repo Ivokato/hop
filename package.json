@@ -1,20 +1,37 @@
 {
-  "name": "foldercms",
-  "version": "0.1.1",
-  "private": true,
+  "name": "hop",
+  "version": "0.1.0",
+  "description": "A small library providing utility methods to escape and unescape HTML entities",
+  "main": "index.js",
   "scripts": {
-    "start": "node app"
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/w0ps/hop"
+  },
+  "keywords": [
+    "dynamic static site",
+    "cms",
+    "experimental"
+  ],
+  "author": "Ivo de Kler <ivo.de.kler@gmail.com> (https://github.com/w0ps)",
+  "license": "MIT",
+  "bugs": {
+    "url": "http://github.com/w0ps/hop"
   },
   "dependencies": {
+    "async": "^0.9.0",
     "express": "3.0.0rc4",
+    "gzippo": "*",
+    "imagemagick": "*",
     "jade": "*",
-		"less": "*",
+    "less": "*",
     "less-middleware": "*",
-		"watchr": "*",
-		"socket.io": "*",
-		"gzippo": "*",
-		"request": "*",
     "node-schedule": "*",
-    "imagemagick": "*"
+    "request": "*",
+    "socket.io": "*",
+    "underscore": "^1.7.0",
+    "watchr": "*"
   }
 }

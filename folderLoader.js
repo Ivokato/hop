@@ -1,10 +1,11 @@
 var watch = require("watchr").watch,
-path = require('path'),
+    path = require('path'),
     fs = require("fs"),
+    _ = require('underscore'),
+    async = require('async'),
     imgMagick = require("imagemagick"),
 		less = require("less"),
 		lessparser = less.Parser({ optimization: 1 }),
-		config = require("./config.json"),
     ImageCache = require('./imageCacher.js').ImageCache,
     fileUtils = require('./fileUtils.js'),
 		getFolderContents = fileUtils.getFolderContents,
@@ -29,7 +30,9 @@ path = require('path'),
 ;
 
 function redefine(site, eventName, filePath){
+  console.log('redefining');
 	  var pathArray = stripPath(site.path + path.sep, filePath).split( path.sep );
+    console.log(pathArray);
 		if(eventName == 'unlink' || eventName == 'delete'){
 			if(pathArray.length == 1) site.remove(pathArray[0]);
 			else site.sections.findOne({foldername: pathArray.shift()}).remove(pathArray);
@@ -72,14 +75,17 @@ function redefine(site, eventName, filePath){
 		}
 	}
 
-function Site(name, path){
+function Site(options){
+  var sitename = options.name,
+      sitePath = path.join( process.cwd(), options.contentPath );
+
 	var site = this;
-	watch({path: path, listener: function(eventName, filePath, currentStat, previousStat){
+	watch({path: sitePath, listener: function(eventName, filePath, currentStat, previousStat){
     console.log(eventName, filePath);
     redefine(site, eventName, filePath);
 	}});
-	console.log(path);
-  getFolderContents(path, function(err, map){
+
+  getFolderContents(sitePath, function(err, map){
 		if(!err) site.diskdata = map;
 		if(countChildren(site.diskdata)) {
 			site.addData(site.diskdata);
@@ -87,7 +93,7 @@ function Site(name, path){
 		}
 	});
   this.sections = [];
-  this.path = path;
+  this.path = sitePath;
 	this.orderPattern = {
     sections: {unassigned: 'date', assigned: []},
     stylesheets: {unassigned: 'date', assigned: []},
@@ -103,19 +109,19 @@ function Site(name, path){
   this.liveViewers = [];
   
   this.defaultImageSize = {width: 500, height: 500};
-  this.imageCache = new ImageCache(config.imageCacheLimit);
+  this.imageCache = new ImageCache({ imageCacheLimit: options.imageCacheLimit, basePath: this.path });
   
   this.header.menu = createMenuFromStructure(this);
 }
 (function(){
   this.addData = function(diskdata){
+    console.log('adding data to site!');
 		var site = this,
         noChildren = true;
-    for(var name in diskdata){
-      var file = diskdata[name];
+    _.each(diskdata, function(file, name){
       if(name.indexOf('conflicted copy') !== -1){
         console.log('file ignored: ' + file.base);
-        continue;
+        return;
       }
       if(file.isDirectory){
         if(!(file.base in reservedFolderNames)) this.sections.push(new Section(file.base, this, file));
@@ -123,78 +129,80 @@ function Site(name, path){
       else{
         if(file.extension in imageTypes){
 
-					if(file.base.toLowerCase() == 'logo') {
+          if(file.base.toLowerCase() == 'logo') {
             var logoPath = stripPath(this.path, file.path);
             
             this.imageCache.addEntry( logoPath );
-						this.header.logo = '/images/' + logoPath;
-					}
+            this.header.logo = '/images/' + logoPath;
+          }
 
-					if(file.base.toLowerCase() == 'background') {
+          if(file.base.toLowerCase() == 'background') {
             var bgndPath = stripPath(this.path, file.path);
 
             this.imageCache.addEntry( bgndPath );
 
-						this.background = bgndPath;
-            if(fs.existsSync('content/style.css')) fs.unlinkSync('content/style.css');
-						fs.writeFile('content/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + bgndPath + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + ';background-size:cover;}')
-					}
-				}
-				else if(file.extension == 'less' || file.extension == 'css'){
-          console.log('stylesheet found: ' + file.base + ', type: ' + file.extension);
-					this.stylesheets.removeOne({name: file.base});
-					this.stylesheets.push({src: '/stylesheets/' + file.base + '.css', name: file.base, date: file.modified });
-					if(file.extension == 'less'){
-						lessparser.parse(file.contents, function(error, tree){
-							if(error) return console.log(error);
-							if(fs.existsSync('content/' + file.base + '.css')) fs.unlinkSync('content/' + file.base + '.css');
-							fs.writeFileSync('content/' + file.base + '.css', tree.toCSS());
-						});
-					}
-				}
-				else if(file.extension == 'js'){
-					this.javascripts.removeOne({name: file.base});
-					this.javascripts.push({src: '/javascripts/' + file.base + '.js', name: file.base, date: file.modified});
-				}
-				else if(file.extension == 'txt'){
-					var content = file.contents.split("\r\n").join('<br>');
-          if(file.base in basicTextNames) {
-						if(file.base == 'title' || file.base == 'subtitle') site.header[file.base] = content;
-						else site[file.base] = content;
-					}
-          else{
-						site.extraContent.push({name: file.base, content: content});
+            this.background = bgndPath;
+            if(fs.existsSync( this.path + '/style.css')) fs.unlinkSync( this.path + '/style.css');
+            fs.writeFile( this.path + '/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + bgndPath + ') no-repeat' + (options.backgroundColor ? ' ' + options.backgroundColor : '') + ';background-size:cover;}');
           }
-				}
+        }
+        else if(file.extension == 'less' || file.extension == 'css'){
+          console.log('stylesheet found: ' + file.base + ', type: ' + file.extension);
+          this.stylesheets.removeOne({name: file.base});
+          this.stylesheets.push({src: '/stylesheets/' + file.base + '.css', name: file.base, date: file.modified });
+          if(file.extension == 'less'){
+            lessparser.parse(file.contents, function(error, tree){
+              if(error) return console.log(error);
+              if(fs.existsSync( site.path + '/' + file.base + '.css')) fs.unlinkSync( site.path + '/' + file.base + '.css');
+              fs.writeFileSync( site.path + '/' + file.base + '.css', tree.toCSS());
+            });
+          }
+        }
+        else if(file.extension == 'js'){
+          this.javascripts.removeOne({name: file.base});
+          this.javascripts.push({src: '/javascripts/' + file.base + '.js', name: file.base, date: file.modified});
+        }
+        else if(file.extension == 'txt'){
+          var content = file.contents.split("\r\n").join('<br>');
+          if(file.base in basicTextNames) {
+            if(file.base == 'title' || file.base == 'subtitle') site.header[file.base] = content;
+            else site[file.base] = content;
+          }
+          else{
+            site.extraContent.push({name: file.base, content: content});
+          }
+        }
         else if(file.extension == 'ico'){
           console.log('ico file encountered: ' + file.base);
         }
         else if(file.extension == 'json'){
-					try{
-						var object = JSON.parse(file.contents);
-					}
-					catch(e){
-						console.log(file.base, e);
-					}
-					switch(file.base){
-						case 'authentication':  site.authInfo = object; break;
-						case 'imageSizes': site.defaultImageSize = object; break;
-						case 'order': replaceProps(site.orderPattern, object); break;
-					}
+          try{
+            var object = JSON.parse(file.contents);
+          }
+          catch(e){
+            console.log(file.base, e);
+          }
+          switch(file.base){
+            case 'authentication':  site.authInfo = object; break;
+            case 'imageSizes': site.defaultImageSize = object; break;
+            case 'order': replaceProps(site.orderPattern, object); break;
+          }
         }
       }
-			noChildren = false;
-    }
-    validatePath('public/css', function(){
-      if(!site.background) fs.writeFileSync('public/css/background.less', '');
-		  if(!site.header.logo) fs.writeFileSync('public/css/logo.less', '');    
+      noChildren = false;
+    }.bind(this));
+    
+    validatePath( process.cwd() + '/public/css', function(){
+      if(!site.background) fs.writeFileSync( process.cwd() + '/public/css/background.less', '');
+		  if(!site.header.logo) fs.writeFileSync( process.cwd() + 'public/css/logo.less', '');
     });
 		if(noChildren) setTimeout(function(){
-			var path = config.contentpath + config.homesection;
+			var path = options.contentpath + options.homesection;
 			console.log('creating ' + path);
 			fs.mkdirSync(path)
-		}, 500)
+		}, 500);
 		this.sort();
+    console.log('End addData');
   };
 	this.sort = function(){
 		multiSort(this);
@@ -222,17 +230,18 @@ function Site(name, path){
         else if(extension == 'css' || extension == 'less') {
           this.stylesheets.removeOne({name: filename});
           if(extension == 'less'){
-            if(fs.existsSync('content/' + filename + '.css')) fs.unlinkSync('content/' + filename + '.css');
+            if(fs.existsSync( this.path + '/' + filename + '.css')) fs.unlinkSync('content/' + filename + '.css');
           }
         }
         else if(extension == 'js') this.javascripts.removeOne({name: filename});
       }
       else{
-        if(fs.existsSync('content/' + filename + '.less')) fs.unlinkSync('content/' + filename + '.less');
+        if(fs.existsSync( this.path + '/' + filename + '.less')) fs.unlinkSync( this.path+ '/' + filename + '.less');
       }
 		}
 	};
 	this.update = function(pathArray, file){
+    console.log('updating ' + pathArray.join(path.sep));
 		if(pathArray.length > 1){
       if(pathArray[0] in reservedFolderNames) return console.log('folder ignored, in reservedFolderNames');
 			var section = this.sections.findOne({foldername: pathArray.shift()});
@@ -257,6 +266,7 @@ function Site(name, path){
 }).call(Site.prototype);
 
 function Section(name, site, data){
+  console.log('creating section ' + name);
 	this.name = name;
 	this.foldername = name;
   this.title = name;
@@ -299,12 +309,12 @@ function Section(name, site, data){
             
 						fs.writeFile(
               this.site.path + path.sep + this.foldername + path.sep + 'background.less',
-              'html{min-height:100%;}body{min-height:100%; background: url(/images/' + bgndPath + ') no-repeat' + (config.backgroundColor ? ' ' + config.backgroundColor : '') + '; background-size:cover;}'
+              'html{min-height:100%;}body{min-height:100%; background: url(/images/' + bgndPath + ') no-repeat' + (options.backgroundColor ? ' ' + options.backgroundColor : '') + '; background-size:cover;}'
             );
 					}
           else{
             if(this.images.removeOne({name: item.base})) this.site.imageCache.clear( this.foldername + path.sep + itemname);
-            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize), this.site.imageCache);
+            this.images.push(new Image(item, this.site.path, this.site.defaultImageSize, this.site.imageCache));
           }
         }
 				else if(item.extension == 'less' || item.extension == 'css'){
@@ -313,7 +323,7 @@ function Section(name, site, data){
 					if(item.extension == 'less'){
 						lessparser.parse(item.contents, function(error, tree){
 							if(error) return console.log(error);
-							var fullpath = 'content/' + section.foldername + path.sep + item.base + '.css';
+							var fullpath = section.site.path + '/' + section.foldername + path.sep + item.base + '.css';
 							if(fs.existsSync(fullpath)) fs.unlinkSync(fullpath);
 							fs.writeFileSync(fullpath, tree.toCSS());
 						});
@@ -407,6 +417,7 @@ function Section(name, site, data){
 }).call(Section.prototype);
 
 function Item(name, section, data){
+  console.log('creating item ' + name);
   Object.defineProperty(this, 'section', {value: section});
 	this.contents = {
 		title: name,
@@ -551,8 +562,6 @@ function Image(fileRef, basepath, size, cache){
   this.height = size.height;
   this.aspect = this.width / this.height;
 
-  var doLog = image.name.toLowerCase() == 'mr-burns-saying-excellent';
-
   this.entry = new cache.Entry(
     (stripPath(basepath, localPath.join('/'))).substr(1),
     function addEntryCallback(error, img) {
@@ -590,6 +599,7 @@ function removeTextFile(filename){
 }
 
 function stripPath(base, full){
+  console.log(full, base);
 	return full.split(base)[1];
 }
 

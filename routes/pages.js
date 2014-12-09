@@ -3,6 +3,7 @@ module.exports = {
     {
       route: '/:section',
       handler: function sectionRoute(req, res){
+        console.log('loading :section');
         if(req.params.section.split('.').length == 1){
           var section = this.sections.findOne({foldername: req.params.section});
               stylesheets = this.stylesheets.deepclone().merge(section.stylesheets),

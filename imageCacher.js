@@ -6,13 +6,13 @@ var path = require('path'),
     validatePath = fileUtils.validatePath,
     removeNonEmptyFolder = fileUtils.removeNonEmptyFolder;
 
-function ImageCache(maxSize, options){
+function ImageCache(options){
 	if(!options) options = {};
-  this.maxSize = options.maxSize || maxSize * (1024 * 1024);
+  this.maxSize = options.maxSize * (1024 * 1024);
   this.diskSize = 0;
   this.entries = {};
   this.storageDir = options.storageDir || 'imagecache';
-	this.basePath = options.basePath || 'content';
+	this.basePath = options.basePath;
 
   this.memoryStore = new MemoryStore(options);
 
