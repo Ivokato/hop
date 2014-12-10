@@ -1,7 +1,7 @@
 {
-  "name": "hop",
-  "version": "0.1.0",
-  "description": "A small library providing utility methods to escape and unescape HTML entities",
+  "name": "hopcms",
+  "version": "0.0.1",
+  "description": "A dynamic static site generator",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
