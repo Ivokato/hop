@@ -21,7 +21,7 @@
     "url": "http://github.com/w0ps/hop"
   },
   "dependencies": {
-    "async": "^0.9.0",
+    "async": "*",
     "express": "3.0.0rc4",
     "gzippo": "*",
     "imagemagick": "*",
