@@ -1,6 +1,6 @@
 {
   "name": "hopcms",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "A dynamic static site generator",
   "main": "index.js",
   "scripts": {
@@ -31,7 +31,7 @@
     "node-schedule": "*",
     "request": "*",
     "socket.io": "*",
-    "underscore": "^1.7.0",
+    "underscore": "*",
     "watchr": "*"
   }
 }
