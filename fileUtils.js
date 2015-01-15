@@ -133,7 +133,7 @@ function getFile(path, callback){
 
 function validatePath(localPath, callback) {
 	callback = callback || function(){};
-	
+
 	fs.exists(localPath, function(exists){
 		var localPathArray,
 			deepness,
@@ -156,12 +156,9 @@ function validatePath(localPath, callback) {
 
 			while(newPathArray.length && newPathArray[0]) {
 				base += newPathArray.shift() + path.sep;
-				console.log('base: ', base);
 				fs.mkdirSync(base);
 				console.log('made directory ' + base);
 			}
-
-			console.log('done validating path ' + localPath);
 
 			callback();
 		}
