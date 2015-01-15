@@ -11,9 +11,8 @@ function ImageCache(options){
   this.maxSize = options.maxSize * (1024 * 1024);
   this.diskSize = 0;
   this.entries = {};
-  this.storageDir = options.storageDir || 'imagecache';
+  this.storageDir = options.storageDir || path.resolve(__dirname, 'imagecache');
 	this.basePath = options.basePath;
-
   this.memoryStore = new MemoryStore(options);
 
   this.doMemoryStore = true;

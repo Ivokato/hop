@@ -191,10 +191,9 @@ function Site(options){
       }
       noChildren = false;
     }.bind(this));
-    
-    validatePath( process.cwd() + '/public/css', function(){
-      if(!site.background) fs.writeFileSync( process.cwd() + '/public/css/background.less', '');
-		  if(!site.header.logo) fs.writeFileSync( process.cwd() + 'public/css/logo.less', '');
+    validatePath( path.resolve(__dirname, 'public', 'css5'), function(){
+      if(!site.background) fs.writeFileSync( path.resolve( __dirname, 'public', 'css5', 'background.less'), '');
+		  if(!site.header.logo) fs.writeFileSync( path.resolve( __dirname, 'public', 'css5', 'logo.less'), '');
     });
 		if(noChildren) setTimeout(function(){
 			var path = options.contentpath + options.homesection;
