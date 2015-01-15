@@ -157,7 +157,6 @@ function validatePath(localPath, callback) {
 			while(newPathArray.length && newPathArray[0]) {
 				base += newPathArray.shift() + path.sep;
 				fs.mkdirSync(base);
-				console.log('made directory ' + base);
 			}
 
 			callback();
@@ -167,7 +166,6 @@ function validatePath(localPath, callback) {
 }
 
 function removeNonEmptyFolder(path, callback){
-	console.log('starting removal of ' + path + ' and its children');
 	var level = level || 0,
 		callback = callback || function(){};
 	

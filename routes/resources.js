@@ -10,16 +10,16 @@ var imgMimes = {
 module.exports = {
   get: [
     {
-      route: /images\/(.+)/,
-      handler: function(req, res){
-        console.log('image requested');
+      route: /\/(.+)\.(jpg|png)$/,
+      handler: function(req, res, next){
         var imgPath = req.params[0],
-            extension = imgPath.split('.').pop();
-        
-        this.imageCache.get(req.params[0], req.query, function(error, img){
+            extension = req.params[1],
+            fullImgName = imgPath + '.' + extension;
+
+        this.imageCache.get(fullImgName, req.query, function(error, img){
           if(error) {
-            console.log(error);
-            res.send(503, error);
+            console.log(error, fullImgName);
+            res.next(error);
           }
           else{
             res.writeHead( 200, {'Content-Type': imgMimes[extension]} );

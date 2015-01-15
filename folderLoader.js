@@ -30,9 +30,8 @@ var watch = require("watchr").watch,
 ;
 
 function redefine(site, eventName, filePath){
-  console.log('redefining');
+  console.log('redefining: ', eventName, 'filePath: ', filePath);
 	  var pathArray = stripPath(site.path + path.sep, filePath).split( path.sep );
-    console.log(pathArray);
 		if(eventName == 'unlink' || eventName == 'delete'){
 			if(pathArray.length == 1) site.remove(pathArray[0]);
 			else site.sections.findOne({foldername: pathArray.shift()}).remove(pathArray);
@@ -81,7 +80,6 @@ function Site(options){
 
 	var site = this;
 	watch({path: sitePath, listener: function(eventName, filePath, currentStat, previousStat){
-    console.log(eventName, filePath);
     redefine(site, eventName, filePath);
 	}});
 
@@ -115,7 +113,6 @@ function Site(options){
 }
 (function(){
   this.addData = function(diskdata){
-    console.log('adding data to site!');
 		var site = this,
         noChildren = true;
     _.each(diskdata, function(file, name){
@@ -130,20 +127,19 @@ function Site(options){
         if(file.extension in imageTypes){
 
           if(file.base.toLowerCase() == 'logo') {
-            var logoPath = stripPath(this.path, file.path);
-            
+            var logoPath = stripPath(this.path, file.path).substring(1);
             this.imageCache.addEntry( logoPath );
-            this.header.logo = '/images/' + logoPath;
+            this.header.logo = logoPath;
           }
 
           if(file.base.toLowerCase() == 'background') {
-            var bgndPath = stripPath(this.path, file.path);
+            var bgndPath = stripPath(this.path, file.path).substring(1);
 
             this.imageCache.addEntry( bgndPath );
 
             this.background = bgndPath;
             if(fs.existsSync( this.path + '/style.css')) fs.unlinkSync( this.path + '/style.css');
-            fs.writeFile( this.path + '/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/images/' + bgndPath + ') no-repeat' + (options.backgroundColor ? ' ' + options.backgroundColor : '') + ';background-size:cover;}');
+            fs.writeFile( this.path + '/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/' + bgndPath + ') no-repeat' + (this.backgroundColor ? ' ' + this.backgroundColor : '') + ';background-size:cover;}');
           }
         }
         else if(file.extension == 'less' || file.extension == 'css'){
@@ -180,7 +176,7 @@ function Site(options){
             var object = JSON.parse(file.contents);
           }
           catch(e){
-            console.log(file.base, e);
+            console.log(e, file.base);
           }
           switch(file.base){
             case 'authentication':  site.authInfo = object; break;
@@ -197,11 +193,9 @@ function Site(options){
     });
 		if(noChildren) setTimeout(function(){
 			var path = options.contentpath + options.homesection;
-			console.log('creating ' + path);
 			fs.mkdirSync(path)
 		}, 500);
 		this.sort();
-    console.log('End addData');
   };
 	this.sort = function(){
 		multiSort(this);
@@ -240,7 +234,6 @@ function Site(options){
 		}
 	};
 	this.update = function(pathArray, file){
-    console.log('updating ' + pathArray.join(path.sep));
 		if(pathArray.length > 1){
       if(pathArray[0] in reservedFolderNames) return console.log('folder ignored, in reservedFolderNames');
 			var section = this.sections.findOne({foldername: pathArray.shift()});
@@ -248,7 +241,6 @@ function Site(options){
       if(section){
          section.update(pathArray, file);
       }
-      else console.log('unknown section: ', pathArray);
 		}
 		else{
 			this.addData(file);
@@ -303,12 +295,12 @@ function Section(name, site, data){
       else{
         if(item.extension in imageTypes){
           if(item.base.toLowerCase() == 'background') {
-            var bgndPath = stripPath(this.site.path, item.path);
+            var bgndPath = stripPath(this.site.path, item.path).substring(1);
             this.site.imageCache.addEntry(bgndPath);
             
 						fs.writeFile(
               this.site.path + path.sep + this.foldername + path.sep + 'background.less',
-              'html{min-height:100%;}body{min-height:100%; background: url(/images/' + bgndPath + ') no-repeat' + (options.backgroundColor ? ' ' + options.backgroundColor : '') + '; background-size:cover;}'
+              'html{min-height:100%;}body{min-height:100%; background: url(' + bgndPath + ') no-repeat' + (this.backgroundColor ? ' ' + this.backgroundColor : '') + '; background-size:cover;}'
             );
 					}
           else{
@@ -417,7 +409,7 @@ function Section(name, site, data){
 
 function Item(name, section, data){
   console.log('creating item ' + name);
-  Object.defineProperty(this, 'section', {value: section});
+  Object.defineProperty(this, 'section', { value: section });
 	this.contents = {
 		title: name,
     images: [],
@@ -562,7 +554,7 @@ function Image(fileRef, basepath, size, cache){
   this.aspect = this.width / this.height;
 
   this.entry = new cache.Entry(
-    (stripPath(basepath, localPath.join('/'))).substr(1),
+    stripPath(basepath, localPath.join('/')).substr(1),
     function addEntryCallback(error, img) {
       var aspect = image.entry.width / image.entry.height;
       if(error) console.log(error);
@@ -570,7 +562,7 @@ function Image(fileRef, basepath, size, cache){
       image.width = Math.min(image.entry.width, image.width);
       image.height = Math.min(image.entry.height, image.height);
 
-      if(aspect > image.aspect) {   
+      if(aspect > image.aspect) { 
         image.height = Math.round(image.width / aspect);
       } else {
         image.width = Math.round(image.height * aspect);
@@ -598,7 +590,6 @@ function removeTextFile(filename){
 }
 
 function stripPath(base, full){
-  console.log(full, base);
 	return full.split(base)[1];
 }
 
@@ -630,7 +621,7 @@ function multiSort(parent){
         dates.reverse();
       }
       for(var index in dates){
-        existingItems[dates[index].name].order = +index + n;
+        existingItems[dates[index].name].order = + index + n;
       }
     }
     existingItems.sort(function(a,b){ return a.order - b.order });
