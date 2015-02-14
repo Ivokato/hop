@@ -11,7 +11,7 @@ module.exports = {
   get: [
     {
       route: /\/(.+)\.(jpg|png)$/,
-      handler: function(req, res, next){
+      handler: function getImage(req, res, next){
         var imgPath = req.params[0],
             extension = req.params[1],
             fullImgName = imgPath + '.' + extension;
@@ -19,12 +19,27 @@ module.exports = {
         this.imageCache.get(fullImgName, req.query, function(error, img){
           if(error) {
             console.log(error, fullImgName);
-            res.next(error);
+            return next(error);
           }
-          else{
-            res.writeHead( 200, {'Content-Type': imgMimes[extension]} );
-            res.end(img, 'binary');
+          
+          res.writeHead( 200, {'Content-Type': imgMimes[extension]} );
+          res.end(img, 'binary');
+        });
+      }
+    },
+    {
+      route: /\/(.+)\.(js|css|less)/,
+      handler: function getResource(req, res, next){
+        this.get(req.params.join('.').split('/'), function(err, resource){
+          if(!resource){
+            if(err){
+              console.log(err);
+            }
+            return next();
           }
+
+          res.set('Content-Type', resource.mime);
+          res.send(resource.payload);
         });
       }
     },

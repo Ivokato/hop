@@ -14,8 +14,35 @@ var watch = require("watchr").watch,
 		imageTypes = {
 			'jpg': 'image/jpg',
 			'gif': 'image/gif',
-			'png': 'iamge/png'
+			'png': 'image/png'
 		},
+    resourceTypes = {
+      jpg: {
+        mime: 'image/jpg',
+        name: 'image',
+        format: 'binary'
+      },
+      gif: {
+        mime: 'image/gif',
+        name: 'image',
+        format: 'binary'
+      },
+      png: {
+        mime: 'image/png',
+        name: 'image',
+        format: 'binary'
+      },
+      js:  {
+        mime: 'text/javascript',
+        name: 'javascript',
+        format: 'text'
+      },
+      css: {
+        mime: 'text/css',
+        name: 'stylesheet',
+        format: 'text'
+      }
+    },
     basicTextNames = {
       title: true,
       subtitle: true,
@@ -103,6 +130,7 @@ function Site(options){
 	this.stylesheets = [];
   this.javascripts = [];
   this.extraContent = [];
+  this.filesByName = {};
   
   this.liveViewers = [];
   
@@ -112,94 +140,186 @@ function Site(options){
   this.header.menu = createMenuFromStructure(this);
 }
 (function(){
+  this.getPath = function getPath(){
+    if(this.parent){
+      return this.parent.getPath() + this.foldername + '/';
+    }
+
+    return '/';
+  },
+  this.getDiskPath = function getDiskPath(){
+    var parent = this;
+    while(parent.parent){
+      parent = parent.parent;
+    }
+
+    console.log(parent.path);
+    return parent.path + this.getPath();
+  },
   this.addData = function(diskdata){
 		var site = this,
         noChildren = true;
-    _.each(diskdata, function(file, name){
+    _.each(diskdata, function processFile(file, name){
+      
       if(name.indexOf('conflicted copy') !== -1){
         console.log('file ignored: ' + file.base);
         return;
       }
-      if(file.isDirectory){
-        if(!(file.base in reservedFolderNames)) this.sections.push(new Section(file.base, this, file));
-      }
-      else{
-        if(file.extension in imageTypes){
 
-          if(file.base.toLowerCase() == 'logo') {
-            var logoPath = stripPath(this.path, file.path).substring(1);
-            this.imageCache.addEntry( logoPath );
-            this.header.logo = logoPath;
-          }
-
-          if(file.base.toLowerCase() == 'background') {
-            var bgndPath = stripPath(this.path, file.path).substring(1);
-
-            this.imageCache.addEntry( bgndPath );
-
-            this.background = bgndPath;
-            if(fs.existsSync( this.path + '/style.css')) fs.unlinkSync( this.path + '/style.css');
-            fs.writeFile( this.path + '/background.less', 'html{min-height:100%;}body{min-height:100%;background: url(/' + bgndPath + ') no-repeat' + (this.backgroundColor ? ' ' + this.backgroundColor : '') + ';background-size:cover;}');
-          }
-        }
-        else if(file.extension == 'less' || file.extension == 'css'){
-          console.log('stylesheet found: ' + file.base + ', type: ' + file.extension);
-          this.stylesheets.removeOne({name: file.base});
-          this.stylesheets.push({src: '/stylesheets/' + file.base + '.css', name: file.base, date: file.modified });
-          if(file.extension == 'less'){
-            lessparser.parse(file.contents, function(error, tree){
-              if(error) return console.log(error);
-              if(fs.existsSync( site.path + '/' + file.base + '.css')) fs.unlinkSync( site.path + '/' + file.base + '.css');
-              fs.writeFileSync( site.path + '/' + file.base + '.css', tree.toCSS());
-            });
-          }
-        }
-        else if(file.extension == 'js'){
-          this.javascripts.removeOne({name: file.base});
-          this.javascripts.push({src: '/javascripts/' + file.base + '.js', name: file.base, date: file.modified});
-        }
-        else if(file.extension == 'txt'){
-          var content = file.contents.split("\r\n").join('<br>');
-          if(file.base in basicTextNames) {
-            if(file.base == 'title' || file.base == 'subtitle') site.header[file.base] = content;
-            else site[file.base] = content;
-          }
-          else{
-            site.extraContent.push({name: file.base, content: content});
-          }
-        }
-        else if(file.extension == 'ico'){
-          console.log('ico file encountered: ' + file.base);
-        }
-        else if(file.extension == 'json'){
-          try{
-            var object = JSON.parse(file.contents);
-          }
-          catch(e){
-            console.log(e, file.base);
-          }
-          switch(file.base){
-            case 'authentication':  site.authInfo = object; break;
-            case 'imageSizes': site.defaultImageSize = object; break;
-            case 'order': replaceProps(site.orderPattern, object); break;
-          }
-        }
-      }
       noChildren = false;
+
+      if(file.isDirectory){
+        return this.addDirectory(file);
+      }
+
+      var addFunctionName = file.extension + 'Add',
+          addFunction = this[addFunctionName];
+
+      if(addFunction && typeof addFunction === 'function'){
+        return this[addFunctionName](file);
+      }
+
+      console.log('don\'t yet know what to do with: ', name);
     }.bind(this));
-    validatePath( path.resolve(__dirname, 'public', 'css5'), function(){
-      if(!site.background) fs.writeFileSync( path.resolve( __dirname, 'public', 'css5', 'background.less'), '');
-		  if(!site.header.logo) fs.writeFileSync( path.resolve( __dirname, 'public', 'css5', 'logo.less'), '');
-    });
-		if(noChildren) setTimeout(function(){
-			var path = options.contentpath + options.homesection;
-			fs.mkdirSync(path)
-		}, 500);
+
+    if(this instanceof Site){
+      validatePath( path.resolve(__dirname, 'public', 'css'), function(){
+        if(!site.background){
+          fs.writeFileSync( path.resolve( __dirname, 'public', 'css', 'background.less'), '');
+        }
+  		  if(!site.header.logo){
+          fs.writeFileSync( path.resolve( __dirname, 'public', 'css', 'logo.less'), '');
+        }
+      });
+
+  		if(noChildren) {
+        setTimeout(function(){
+    			var path = options.contentpath + options.homesection;
+    			fs.mkdirSync(path)
+    		}, 500);
+      }
+    }
+
 		this.sort();
   };
+  this.addDirectory = function addDirectory(file){
+    if(!(file.base in reservedFolderNames)){
+      console.log(this.ch)
+      this[this.childrenList].push(new this.childrenType(file.base, this, file));
+    }
+  }
+  this.addLogo = function addLogo(file){
+    var logoPath = stripPath(this.path, file.path).substring(1);
+    this.imageCache.addEntry( logoPath );
+    this.header.logo = logoPath;
+
+  };
+  this.addBackground = function addBackground(file){
+    var bgndPath = stripPath(this.path, file.path).substring(1);
+
+    this.imageCache.addEntry( bgndPath );
+
+    this.background = bgndPath;
+    
+    if(fs.existsSync( this.path + '/style.css')){
+      fs.unlinkSync( this.path + '/style.css');
+    }
+
+    fs.writeFile(
+      this.path + '/background.less',
+      'html{min-height:100%;}body{min-height:100%;background: url(/' + bgndPath + ') no-repeat' + (this.backgroundColor ? ' ' + this.backgroundColor : '') + ';background-size:cover;}'
+    );
+  };
+  this.jpgAdd = function jpgAdd(file){
+    if(file.base.toLowerCase() == 'logo') {
+      this.addLogo(file);
+    }
+
+    if(file.base.toLowerCase() == 'background') {
+      this.addBackground(file);
+    }
+  };
+  this.pngAdd = this.jpgAdd;
+  this.cssAdd = function cssAdd(file){
+    var site = this;
+
+    this.stylesheets.removeOne({name: file.base});
+    this.stylesheets.push({src: this.getPath() + file.base + '.css', name: file.base, date: file.modified, contents: file.contents });
+  };
+  this.lessAdd = function lessAdd(file){
+    var self = this;
+    console.log(self);
+    this.cssAdd(file);
+    lessparser.parse(file.contents, function(error, tree){
+      if(error) return console.log(error);
+      if(fs.existsSync( self.getDiskPath() + file.base + '.css')) fs.unlinkSync( self.getDiskPath() + file.base + '.css');
+      fs.writeFileSync( self.getDiskPath() + file.base + '.css', tree.toCSS());
+    });
+  };
+  this.jsAdd = function jsAdd(file){
+    this.javascripts.removeOne({name: file.base});
+    this.javascripts.push({src: this.getPath() + file.base + '.js', contents: file.contents, name: file.base, date: file.modified});
+  };
+  this.txtAdd = function txtAdd(file){
+    var content = file.contents.split("\r\n").join('<br>');
+      if(file.base in basicTextNames) {
+        if(file.base == 'title' || file.base == 'subtitle') this.header[file.base] = content;
+        else this[file.base] = content;
+      }
+      else{
+        this.extraContent.push({name: file.base, content: content});
+      }
+  };
+  this.jsonAdd = function jsonAdd(file){
+    try{
+      var object = JSON.parse(file.contents);
+    }
+    catch(e){
+      console.log(e, file.base);
+    }
+    switch(file.base){
+      case 'authentication':  this.authInfo = object; break;
+      case 'imageSizes': this.defaultImageSize = object; break;
+      case 'order': replaceProps(this.orderPattern, object); break;
+    }
+  };
+  this.get = function(pathArray, cb){
+    console.log(this.childrenList, pathArray);
+    var pathRoot = pathArray.shift(),
+        children = this[this.childrenList],
+        child = children ? children.findOne({name: pathRoot}) : null;
+
+    if(child){
+      return child.get(pathArray, cb);
+    }
+    
+    var pathRootArray = pathRoot.split('.'),
+        extension = pathRootArray.pop(),
+        base = pathRootArray.join('.'),
+        type = resourceTypes[extension],
+        set = this[type.name + 's'],
+        item;
+
+    if(set){
+      item = set.findOne({name: base });
+      if(item){
+        return cb(null, {
+          payload: item.contents,
+          format: type.format,
+          mime: type.mime
+        });
+      } else {
+        console.log('item not found: ', pathRoot);
+      }
+    }
+
+    cb();
+  };
+  this.childrenList = 'sections';
+  this.childrenType = Section,
 	this.sort = function(){
 		multiSort(this);
-	}
+	};
 	this.remove = function(name){
 		if(name.split('.').length == 1) {
 			this.sections.removeOne({foldername: name});
@@ -248,7 +368,7 @@ function Site(options){
       
       this.afterUpdate('/');
 		}
-	}
+	};
   this.afterUpdate = function(path){
     
     //reload liveViewers
@@ -262,6 +382,7 @@ function Section(name, site, data){
 	this.foldername = name;
   this.title = name;
 	Object.defineProperty(this, 'site', {value: site});
+  Object.defineProperty(this, 'parent', {value: site});
 	this.orderPattern = {
     items: {unassigned: 'date', assigned: []},
     images: {unassigned: 'date', assigned: []},
@@ -280,6 +401,8 @@ function Section(name, site, data){
   if(data.children && countChildren.call(data.children)) this.addData(data.children);
 }
 (function(){
+  this.getPath = Site.prototype.getPath;
+  this.getDiskPath = Site.prototype.getDiskPath;
   this.addData = function(data){
 		var section = this;
     for(var itemname in data){
@@ -310,7 +433,7 @@ function Section(name, site, data){
         }
 				else if(item.extension == 'less' || item.extension == 'css'){
           this.stylesheets.removeOne({name: item.base});
-					this.stylesheets.push({name: item.base, src: '/stylesheets/' + this.name + '/' + item.base + '.css', date: item.modified });
+					this.stylesheets.push({name: item.base, src: '/' + this.name + '/' + item.base + '.css', date: item.modified });
 					if(item.extension == 'less'){
 						lessparser.parse(item.contents, function(error, tree){
 							if(error) return console.log(error);
@@ -322,7 +445,7 @@ function Section(name, site, data){
 				}
 				else if(item.extension == 'js'){
           this.javascripts.removeOne({name: item.base});
-					this.javascripts.push({name: item.base, src: '/javascripts/' + this.name + '/' + item.base + '.js', date: item.modified });
+					this.javascripts.push({name: item.base, contents: item.contents, src: '/' + this.name + '/' + item.base + '.js', date: item.modified });
 				}
 				else if(item.extension == 'txt'){
 					var content = item.contents.split('\r\n').join('<br>');
@@ -343,12 +466,21 @@ function Section(name, site, data){
         }
 				else{
 					this.attachments.removeOne({name: itemname});
-					this.attachments.push({name: itemname, size: item.size, extension: item.extension, src: '/files/' + this.name + '/' + itemname, date: item.modified });
+					this.attachments.push({name: itemname, size: item.size, extension: item.extension, src: '/' + this.name + '/' + itemname, date: item.modified });
 				}
       }
     }
 		this.sort();
   };
+  this.addData = Site.prototype.addData;
+  this.addDirectory = Site.prototype.addDirectory;
+  this.jsAdd = Site.prototype.jsAdd;
+  this.cssAdd = Site.prototype.cssAdd;
+  this.lessAdd = Site.prototype.lessAdd;
+  this.txtAdd = Site.prototype.txtAdd;
+  this.get = Site.prototype.get;
+  this.childrenList = 'items';
+  this.childrenType = Item;
 	this.sort = function(){
 		multiSort(this);
 	};
@@ -410,6 +542,7 @@ function Section(name, site, data){
 function Item(name, section, data){
   console.log('creating item ' + name);
   Object.defineProperty(this, 'section', { value: section });
+  Object.defineProperty(this, 'parent', { value: section });
 	this.contents = {
 		title: name,
     images: [],
@@ -439,6 +572,8 @@ function Item(name, section, data){
   if(data && countChildren(data)) this.addData(data.children);
 }
 (function(){
+  this.getPath = Site.prototype.getPath;
+  this.getDiskPath = Site.prototype.getDiskPath;
   this.addData = function(data){
 		var item = this;
     for(var thing in data){
@@ -465,7 +600,7 @@ function Item(name, section, data){
         }
         else if(part.extension == 'less' || part.extension == 'css'){
           this.stylesheets.removeOne({name: part.base});
-          this.stylesheets.push({name: part.base, src: '/stylesheets/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.css', date: part.modified });
+          this.stylesheets.push({name: part.base, src: '/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.css', date: part.modified });
           if(part.extension == 'less'){
 						lessparser.parse(part.contents, function(error, tree){
 							if(error) return console.log(error);
@@ -477,7 +612,7 @@ function Item(name, section, data){
         }
         else if(part.extension == 'js'){
           this.javascripts.removeOne({name: part.base});
-          this.javascripts.push({name: part.base, src: '/javascripts/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.js', date: part.modified });
+          this.javascripts.push({name: part.base, contents: part.contents, src: '/' + this.section.foldername + '/' + this.foldername + '/' + part.base + '.js', date: part.modified });
         }
         else if(part.extension == 'json'){
 					try{ var json = JSON.parse(part.contents); }
@@ -524,7 +659,8 @@ function Item(name, section, data){
 			this.addData(file);
       this.section.site.afterUpdate('/' + this.section.foldername + '/' + this.foldername);
 		}
-	}
+	};
+  this.get = Section.prototype.get;
 }).call(Item.prototype);
 
 function createMenuFromStructure(structure){

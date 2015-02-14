@@ -1,37 +1,23 @@
+var _ = require('underscore');
 /**
 /* expects express app, a hop site, and routesets with the following format: [{
 /*   get: [
 /*     {
 /*       route: '/',
-/*       handler: function renderIndex(req, res){ this == hopSite }
+/*       handler: function renderIndex(req, res, next){ this == hopSite }
 /*     }
 /*   ]
 /* }]
 /*/
 
 function applyRoutes(app, site, routeSets){
-	var set,
-      verb,
-      routesWithVerb,
-      route,
-      routeName,
-      routeFun,
-      i, j;
-
-	for(i in routeSets){
-    set = routeSets[i];
-    
-    for(verb in set){
-      routesWithVerb = set[verb];
-      if(routesWithVerb) for(j in routesWithVerb){
-        route = routesWithVerb[j];
-        routeName = route.route;
-        routeFun = route.handler;
-        
-        app[verb](routeName, routeFun.bind(site));
-      }
-    }
-	}
+	_.each(routeSets, function(set){
+    _.each(set, function(routes, verb){
+      _.each(routes, function(route){
+        app[verb](route.route, route.handler.bind(site));
+      });
+    });
+  });
 }
 
 exports.applyRoutes = applyRoutes;
