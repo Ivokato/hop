@@ -5,7 +5,6 @@ var watch = require("watchr").watch,
     async = require('async'),
     imgMagick = require("imagemagick"),
 		less = require("less"),
-		lessparser = less.Parser({ optimization: 1 }),
     ImageCache = require('./imageCacher.js').ImageCache,
     fileUtils = require('./fileUtils.js'),
 		getFolderContents = fileUtils.getFolderContents,
@@ -247,9 +246,9 @@ function Site(options){
     this.stylesheets.push({src: this.getPath() + file.base + '.css', name: file.base, date: file.modified, contents: file.contents });
   };
   this.lessAdd = function lessAdd(file){
-    lessparser.parse(file.contents, function(error, tree){
+    less.render(file.contents, function(error, results){
       if(error) return console.log(error);
-      file.contents = tree.toCSS();
+      file.contents = results.css;
       this.cssAdd(file);
     }.bind(this));
   };
