@@ -370,6 +370,12 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			});
 		});
 		$overlay.animate({opacity: 1}, 500);
+		$(document).on('keyup.overlay', function(e){
+			if(e.keyCode === 27){
+				$overlay.remove();
+				$(document).off('keyup.overlay');
+			}
+		});
 		return $overlay;
 	};
 
