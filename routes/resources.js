@@ -19,6 +19,9 @@ module.exports = {
         this.imageCache.get(fullImgName, req.query, function(error, img){
           if(error) {
             console.log(error, fullImgName);
+            if(error.message === 'imageCache: image not found'){
+              return next();
+            }
             return next(error);
           }
           

@@ -39,7 +39,7 @@ function ImageCache(options){
 		}
 		
 		if(this.entries[src]) this.entries[src].get(query, callback);
-    else callback('imageCache: image not found: ' + src);
+    else callback(new Error('imageCache: image not found'));
   };
 
   this.check = function(){
