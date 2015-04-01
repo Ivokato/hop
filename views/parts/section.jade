@@ -7,7 +7,7 @@ section
 		p!= info.body
 	if info.images
 		each image, imagename in info.images
-			img( data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.src, alt=image.alt, title=image.alt )
+			img( data-role="imgPlaceholder", style="width: " + image.width + 'px; height:' + image.height + "px; display: inline-block;", data-src=image.base, alt=image.alt, title=image.alt )
 	if info.footer
 		p!= info.footer
 	if(info.extraContent)
