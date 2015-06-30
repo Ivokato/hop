@@ -158,21 +158,21 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 	function applyPageTransition(newData, href){
 		var $content = $('#content'),
-				$oldContent = $content.children(),
-				$oldScripts = $('script[data-hopcore!="true"]'),
-				$oldStyles = $('head link[rel="stylesheet"][data-hopcore!="true"]'),
-				$newData = $(newData),
-				$newContent = $newData.find('#content').children(),
-				newTitle = $newData.find('title').html(),
-				$newStyles = $newData.find('#styles').children(),
-				newUniqueStyles = [],
-				$newScripts = $newData.filter('script'),
-				$pageTransition = $.Deferred(),
-				arrived = false,
-				removed = false,
-				newStyleHrefs = [];
+			$oldContent = $content.children(),
+			$oldScripts = $('script[data-hopcore!="true"]'),
+			$oldStyles = $('head link[rel="stylesheet"][data-hopcore!="true"]'),
+			$newData = $(newData),
+			$newContent = $newData.find('#content').children(),
+			newTitle = $newData.find('title').html(),
+			$newStyles = $newData.find('#styles').children(),
+			newUniqueStyles = [],
+			$newScripts = $newData.filter('script'),
+			$pageTransition = $.Deferred(),
+			arrived = false,
+			removed = false,
+			newStyleHrefs = [];
 
-		$(document).trigger('pageTransitionBegin');
+		$(document.body).trigger('pageTransitionBegin', [{ href: href }]);
 
 		history.pushState(null, newTitle, href);
 		$('title').html(newTitle);
@@ -186,7 +186,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 		});
 
 		$pageTransition.done(function(){
-			$(document).trigger('pageTransitionEnd');
+			$(document.body).trigger('pageTransitionEnd', [{ href: href }]);
 		});
 
 		//determine which styles to append
@@ -213,7 +213,8 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 				$cssloader.done(function(){
 					var jsLoadList = [],
-							$jsLoader = new $.Deferred;
+						$jsLoader = new $.Deferred;
+
 					$newContent.css(css).appendTo($content);
 
 					imageLoader.init($newContent);
@@ -693,6 +694,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 $(document).ready(function(){
 	window.imageLoader.init();
+	$(document.body).trigger('pageTransitionEnd', [{ href: location.pathname }]);
 });
 
 if(window.localStorage){
