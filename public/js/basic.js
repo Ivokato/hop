@@ -102,7 +102,7 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 
 (function BasicSetup(){
 
-	var socket = io.connect('/');
+	var socket = io();
 	socket.on('reload', function (data) {
 		if(data.path.indexOf(location.pathname) !== -1 || data.path == '/') location.reload();
 	});

@@ -2,10 +2,10 @@ var sio = require("socket.io"),
     fs = require("fs");
 
 function socketeer(server, site, app){
-  var io = sio.listen(server);
+  var io = sio(server);
   
   io.set('log level', 1);
-  io.sockets.on('connection', function(socket){
+  io.on('connection', function(socket){
     console.log('connection opened');
     var viewer = {socket: socket};
     site.liveViewers.push(viewer);
