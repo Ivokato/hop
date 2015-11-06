@@ -360,17 +360,24 @@ function pageTransition($oldContent, injectNew, removeOld, style){
 			left: 0,
 			'z-index': '1000'
 		});
+
+		document.body.classList.add( 'noscroll' );
 		
 		$(this).append($overlay);
 		
-		$overlay.on('click', function(e){
-			if(e.target !== this) return;
-			$overlay.animate({opacity: 0}, 200, function(){
-				$overlay.trigger('remove');
-				$overlay.remove();
-			});
+		$overlay.on({
+			click: function(e){
+				if(e.target !== this) return;
+				$overlay.animate({ opacity: 0 }, 200, function(){
+					$overlay.trigger( 'remove' );
+					$overlay.remove();
+				});
+			},
+			remove: function(){
+				document.body.classList.remove('noscroll');
+			}
 		});
-		$overlay.animate({opacity: 1}, 500);
+		$overlay.animate({ opacity: 1 }, 500);
 		$(document).on('keyup.overlay', function(e){
 			if(e.keyCode === 27){
 				$overlay.remove();
