@@ -3,6 +3,13 @@ hop
 
 quick and dirty CMS featuring automated asset loading, socket.io driven page refreshes and image scaling + a very basic lightbox
 
+***Installation instructions***
+after you `npm install` and require this module, make sure you have imagemagick installed (osx: with brew works nicely)
+and make sure you link libpng.
+`sudo chown -R $(whoami):admin /usr/local`
+`brew link libpng`
+
+
 ***Basic usage:***
 
 clone the repo, run npm install and get crackin'!
