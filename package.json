@@ -1,6 +1,6 @@
 {
   "name": "hopcms",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A dynamic static site generator",
   "main": "index.js",
   "scripts": {
